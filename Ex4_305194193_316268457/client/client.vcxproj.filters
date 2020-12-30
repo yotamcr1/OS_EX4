@@ -27,10 +27,19 @@
     <ClCompile Include="client.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="massage_send_recv.c">
+      <Filter>Shared Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="client.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SocketSendRecvTools.h">
+      <Filter>Shared Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Share\SocketExampleShared.h">
+      <Filter>Shared Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

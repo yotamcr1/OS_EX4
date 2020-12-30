@@ -79,6 +79,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(ProjectDir)\..\Share;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -142,9 +143,12 @@
   <ItemGroup>
     <ClCompile Include="client.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="massage_send_recv.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Share\SocketExampleShared.h" />
     <ClInclude Include="client.h" />
+    <ClInclude Include="SocketSendRecvTools.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
