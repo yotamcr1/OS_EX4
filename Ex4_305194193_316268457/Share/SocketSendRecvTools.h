@@ -1,21 +1,14 @@
-/*oOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoO*/
-/* 
- This file was written for instruction purposes for the 
- course "Introduction to Systems Programming" at Tel-Aviv
- University, School of Electrical Engineering, Winter 2011, 
- by Amnon Drory.
-*/
-/*oOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoO*/
-
 #ifndef SOCKET_SEND_RECV_TOOLS_H
 #define SOCKET_SEND_RECV_TOOLS_H
-
-/*oOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoO*/
 
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
-/*oOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoO*/
+//Some of the fils is taken from ExampleCode of Recitation 10, course "Introduction to Operation Systems."
+
+int get_str_of_massage_type(int type, char* destination);
+int get_massage_type(const char* str);
+
 
 typedef enum { TRNS_FAILED, TRNS_DISCONNECTED, TRNS_SUCCEEDED } TransferResult_t;
 
@@ -81,8 +74,5 @@ TransferResult_t ReceiveBuffer( char* OutputBuffer, int RemainingBytesToReceive,
  * TRNS_FAILED - otherwise
  */ 
 TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd );
-
-
-/*oOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoO*/
 
 #endif // SOCKET_SEND_RECV_TOOLS_H

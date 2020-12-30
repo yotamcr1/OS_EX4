@@ -145,6 +145,7 @@
     <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Share\Massage.h" />
     <ClInclude Include="..\Share\SocketExampleShared.h" />
     <ClInclude Include="..\Share\SocketSendRecvTools.h" />
     <ClInclude Include="client.h" />

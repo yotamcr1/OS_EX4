@@ -41,5 +41,8 @@
     <ClInclude Include="..\Share\SocketSendRecvTools.h">
       <Filter>Shared Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\Share\Massage.h">
+      <Filter>Shared Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
