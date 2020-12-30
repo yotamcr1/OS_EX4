@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Shared Source Files">
+      <UniqueIdentifier>{d2de78a5-e6c1-4e8f-b7c2-dc856e536ab1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shared Header Files">
+      <UniqueIdentifier>{beed29bb-6dfc-4f37-ba58-222592ca6b7b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -21,12 +27,12 @@
     <ClCompile Include="server.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Share\Massage.h">
+      <Filter>Shared Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="server.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="massages_shared.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
