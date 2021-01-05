@@ -1,5 +1,9 @@
+#ifndef MASSAGE_H
+#define MASSAGE_H
+
 #define MAX_MASSAGE_TYPE 40
 #define MAX_USER_NAME 20
+//massages size drfinition:
 //Client massages:
 #define CLIENT_REQUEST 1
 #define CLIENT_VERSUS 2
@@ -22,8 +26,30 @@
 #define SERVER_WIN 16 
 //end of server massages
 //////////////////////////
-
+/*
+//massages definition:// check if it is OK
+#define CLIENT_REQUEST_MSG "CLIENT_REQUEST"
+#define CLIENT_VERSUS_MSG "CLIENT_VERSUS"
+#define CLIENT_SETUP_MSG "CLIENT_SETUP"
+#define CLIENT_PLAYER_MOVE_MSG "CLIENT_PLAYER_MOVE"
+#define CLIENT_DISCONNECT_MSG "CLIENT_DISCONNECT"
+//end of client massages
+//////////////////////////
+//server massages:
+#define SERVER_MAIN_MENU_MSG "SERVER_MAIN_MENU"
+#define SERVER_APPROVED_MSG "SERVER_APPROVED"
+#define SERVER_DENIED_MSG "SERVER_DENIED"
+#define SERVER_INVITE_MSG "SERVER_INVITE"
+#define SERVER_SETUP_REQUSET_MSG "SERVER_SETUP_REQUSET"
+#define SERVER_PLAYER_MOVE_REQUEST_MSG "SERVER_PLAYER_MOVE_REQUEST"
+#define SERVER_GAME_RESULTS_MSG "SERVER_GAME_RESULTS"
+#define SERVER_DRAW_MSG "SERVER_DRAW"
+#define SERVER_NO_OPPONENTS_MSG "SERVER_NO_OPPONENTS"
+#define SERVER_OPPONENT_QUIT_MSG "SERVER_OPPONENT_QUIT"
+#define SERVER_WIN_MSG "SERVER_WIN"
+*/
 #define INVALID_MASSAGE_TYPE 17
 
 
 
+#endif
