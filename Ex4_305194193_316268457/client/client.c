@@ -5,6 +5,7 @@
 #include <string.h>
 #include <winsock2.h>
 
+#include "client.h"
 #include "SocketExampleShared.h"
 #include "SocketSendRecvTools.h"
 
@@ -14,15 +15,12 @@ SOCKET m_socket;
 //Sending data to the server
 static DWORD SendDataThread(void)
 {
-	char SendStr[256];
+	char SendStr[5];// the sent massage is 4 ints 
 	TransferResult_t SendRes;
 
 	while (1)
 	{
 		gets_s(SendStr, sizeof(SendStr)); //Reading a string from the keyboard
-
-		if (STRINGS_ARE_EQUAL(SendStr, "quit"))
-			return 0x555; //"quit" signals an exit from the client side
 
 		SendRes = SendString(SendStr, m_socket);
 
@@ -72,9 +70,13 @@ static DWORD RecvDataThread(void)
 void ClientMain(char* username, int serverport, unsigned long serverIP_Address) {
 	printf("welcom to ClientMain\n");
 	SOCKADDR_IN clientService;
+	TransferResult_t SendRes;
+	TransferResult_t RecvRes;
 	HANDLE hThread[2];
 	// Initialize Winsock.
 	WSADATA wsaData; //Create a WSADATA object called wsaData.
+	char Massage_type_str[MAX_MASSAGE_TYPE];
+	char* AcceptedStr = NULL;
 	//Call WSAStartup and check for errors.
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR) {
@@ -98,12 +100,33 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 
 	iResult = connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService));
 	handle_diconnecting(iResult,clientService,serverport,serverIP_Address);
-	printf("Connected to server on %lu:%d\n", serverIP_Address, serverport);
-	//should send the client name to the server
+	printf("Connected to server on %lu:%d\n", serverIP_Address, serverport);//connected successfully
 
+	//send the client name to the server:
+	//TBD: the sent massage has to be CLIENT_REQUEST and the recv: SERVER_APPROVED
+
+	if ((SendString(username, m_socket)) == TRNS_FAILED)// send client user name to the server
+	{
+		printf("error while sending username to server\n");
+		return 0x555;
+	}
+	/*TBD: 
+	if there is no answer from server: handle_diconnecting(SOCKET_ERROR,clientService,serverport,serverIP_Address);
+	if answer_type== SERVER_DENIED printf:
+	Server on <ip>:<port> denied the connection request.
+	Choose what to do next:
+	1. Try to reconnect
+	2. Exit
+	*/
+	//maybe do everything until point 5 from instruction within a while loop?
+	RecvRes = ReceiveString(&AcceptedStr, m_socket); //AcceptedStr is dynamic allocated, and should be free
+	/*if (handle_return_value(RecvRes, m_socket))
+		return 1;*/ //TBD: check RecvRes 
+	/*if (AcceptedStr == "SERVER_DENIED") {
+		handle_server_deny(iResult, clientService, serverport, serverIP_Address);
+	}*/
 
 	// Send and receive data.
-	
 	hThread[0] = CreateThread(
 		NULL,
 		0,
@@ -122,13 +145,16 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 		NULL
 	);
 
-	WaitForMultipleObjects(2, hThread, FALSE, INFINITE);
+	WaitForMultipleObjects(2, hThread, FALSE, INFINITE);//TBD: infinite its ok?
 	TerminateThread(hThread[0], 0x555);//TBD: 0X555?
 	TerminateThread(hThread[1], 0x555);
 	CloseHandle(hThread[0]);
 	CloseHandle(hThread[1]);
 	closesocket(m_socket);
-	WSACleanup();
+	if (WSACleanup()) {//if wsacleanup failed
+		printf("WSACleanup failed with error code: : %d\n", WSAGetLastError());
+		return 1;
+	}
 	return;
 }
 
@@ -136,18 +162,40 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 //the function handle in cases of unexpected disconnecting from the server or timeout
 void handle_diconnecting(int iResult, SOCKADDR_IN clientService, int serverport, unsigned long serverIP_Address) {
 	int answer_num;
-	while (iResult == SOCKET_ERROR) {
+	int iResult_local = iResult;
+	while (iResult_local == SOCKET_ERROR) {
 		printf("Failed connecting to server on %lu:%d.\nChoose what to do next:\n 1. Try to reconnect\n2. Exit\n", serverIP_Address, serverport);
 		scanf_s("%d", &answer_num);
 		if (answer_num == 1) {
-			iResult = connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService));
+			iResult_local = connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService));
 		}
 		else {
 			WSACleanup();//TBD: check if all resources are free:
-			iResult = closesocket(m_socket);
-			if (iResult == SOCKET_ERROR)
-				wprintf("closesocket function failed with error: %ld\n", WSAGetLastError());
-			exit(1);//TBD: is it OK to use exit(1) here?
+			iResult_local = closesocket(m_socket);
+			if (iResult_local == SOCKET_ERROR)
+				printf("closesocket function failed with error: %ld\n", WSAGetLastError());
+			exit(1);//TBD: call to shutdown function for client
 		}
 	}
+	return;
 }
+/*
+void handle_server_deny(int iResult, SOCKADDR_IN clientService, int serverport, unsigned long serverIP_Address) {
+	int answer_num;
+	int iResult_local = iResult;
+	while (iResult_local == SOCKET_ERROR) {
+		printf("Server on %lu:%d denied the connection request.\nChoose what to do next:\n 1. Try to reconnect\n2. Exit\n", serverIP_Address, serverport);
+		scanf_s("%d", &answer_num);
+		if (answer_num == 1) {
+			iResult_local = connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService));
+		}
+		else {
+			WSACleanup();//TBD: check if all resources are free:
+			iResult_local = closesocket(m_socket);
+			if (iResult_local == SOCKET_ERROR)
+				printf("closesocket function failed with error: %ld\n", WSAGetLastError());
+			exit(1);//TBD: call to shutdown function for client
+		}
+	}
+	return;
+}*/
