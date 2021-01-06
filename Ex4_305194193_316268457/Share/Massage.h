@@ -33,7 +33,7 @@
 #define CLIENT_SETUP_MSG "CLIENT_SETUP"
 #define CLIENT_PLAYER_MOVE_MSG "CLIENT_PLAYER_MOVE"
 #define CLIENT_DISCONNECT_MSG "CLIENT_DISCONNECT"
-//end of client massages
+//end of client massages#
 //////////////////////////
 //server massages:
 #define SERVER_MAIN_MENU_MSG "SERVER_MAIN_MENU"

@@ -8,6 +8,7 @@
 #include "SocketExampleShared.h"
 #include "SocketSendRecvTools.h"
 #include "Massage.h"
+#include "Lock.h"
 
 
 #define NUM_OF_WORKER_THREADS 2
@@ -15,10 +16,13 @@
 #define DEFAULT_BUFLEN 512
 #define SEND_STR_SIZE 120
 
-
+//Global parameters
 HANDLE ThreadHandles[NUM_OF_WORKER_THREADS];
 SOCKET ThreadInputs[NUM_OF_WORKER_THREADS];
 int Threads_wanna_play[NUM_OF_WORKER_THREADS] = { 0 };
+HANDLE Thread_Connection_File[NUM_OF_WORKER_THREADS];
+lock* p_lock = NULL;
+
 
 //functions from recitation: maybe we should need to create them.
 //should be in the header file
@@ -27,14 +31,13 @@ static void CleanupWorkerThreads();
 static DWORD ServiceThread(SOCKET* t_socket);
 //
 
-
-
 void MainServer(int ServerPort) {
 
 	SOCKET MainSocket = INVALID_SOCKET;
 	unsigned long Address;
 	SOCKADDR_IN service;
 	int bindRes,ListenRes,Ind;
+	p_lock = InitializLock(NUM_OF_WORKER_THREADS);
 
 	// Initialize Winsock.
 	WSADATA wsaData;
@@ -178,6 +181,8 @@ void get_client_name(char* client_request_massage, char* destination_client_name
 	destination_client_name[j] = '\0';
 }
 
+
+
 static DWORD ServiceThread(SOCKET* t_socket) {
 
 	char SendStr[SEND_STR_SIZE];
@@ -187,6 +192,7 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	char* AcceptedStr = NULL;
 	char Client_Name[MAX_USER_NAME];
 	char Massage_type_str[MAX_MASSAGE_TYPE];
+	DWORD last_error;
 
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
@@ -196,9 +202,18 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	if (massage_type != CLIENT_REQUEST) {
 		printf("The Massage should be CLIENT_REQUEST, recived %s", Massage_type_str);
 		//TBD: deal with incorrect massages
+		//this is coding falut!!
 	}
 	get_client_name(AcceptedStr, Client_Name);
 	free(AcceptedStr);
+	strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_APPROVED\n");
+	SendRes = SendString(SendStr, *t_socket);
+	if (SendRes == TRNS_FAILED)
+	{
+		printf("Service socket error while writing, closing thread.\n");
+		closesocket(*t_socket);
+		return 1;
+	}
 	strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_MAIN_MENU\n");
 	SendRes = SendString(SendStr, *t_socket);
 	if (SendRes == TRNS_FAILED)
@@ -223,28 +238,129 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 		return 0;
 		//TBD: terminate program.. this is for debug purpose anyway
 	}
-	//Client versus massage recived:
-	//
+	/*Client Versus Massage type:*/
+	HANDLE Thread_connection_file = CreateFileA(
+		"game_file_connection.txt",
+		GENERIC_READ | GENERIC_WRITE, //Open file with write read
+		FILE_SHARE_READ | FILE_SHARE_WRITE, //the file should be shared by the threads.
+		NULL, //default security mode
+		CREATE_NEW, //try to create it. if alrady opened - there's a player waiting, else: this thread is first player
+		FILE_ATTRIBUTE_NORMAL, //normal attribute
+		NULL);//not relevant for open file operations. 
+	last_error = GetLastError();
+	if ((Thread_connection_file == INVALID_HANDLE_VALUE) && (last_error != ERROR_FILE_EXISTS)) {
+		printf("The file doesn't exist, but error was occourd during the attempt to create it.\n");
+		//TBD:deal with this error
+		//but this thread should die here anyway
+		closesocket(*t_socket);
+		return 0;
+	}
+	if (last_error == ERROR_FILE_EXISTS) { //there is 2 players in the server! start playing
+		//ask from the player send 4 numbers using SERVERT_SETUP_REQ and then wait for the answer
+		Thread_connection_file = CreateFileA("game_file_connection.txt", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_SETUP_REQUSET\n");
+		SendRes = SendString(SendStr, *t_socket);
+		if (SendRes == TRNS_FAILED)	{
+			printf("Service socket error while writing, closing thread.\n");
+			closesocket(*t_socket);
+			return 1;
+		}
+		//TBD: Function to implement the game when 2 threads are available.
+		game_second_client(t_socket, Thread_connection_file,Client_Name);
+				
+	}
+	else {}; //TBD: THIS IS THE FIRST PLAYER!!! 
+}
 
+int get_4digit_number_from_massage(char* str) {
+	int i = 0;
+	while (str[i] != ':')
+		i++;
+	i++;
+	char str_num[5] = { str[i + 3], str[i + 2],str[i + 1],str[i], '\0' };
+	int number = atoi(str_num);
+	return number;
+}
 
+void game_first_client(SOCKET* t_socket, HANDLE game_file, char* client_name) {
 
-
-
-
-
-
-
-
+	char SendStr[SEND_STR_SIZE];
+	TransferResult_t SendRes;
+	TransferResult_t RecvRes;
+	char* AcceptedStr = NULL;
+	char Massage_type_str[MAX_MASSAGE_TYPE];
+	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
+	if (check_transaction_return_value(RecvRes, t_socket))
+		return 1;
+	int massage_type = get_massage_type(AcceptedStr);
+	get_str_of_massage_type(massage_type, Massage_type_str);
+	if (massage_type != CLIENT_SETUP) {
+		printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
+		//TBD: deal with incorrect massages
+		//this is coding falut!!
+	}
+	int secret_number = get_4digit_number_from_massage(AcceptedStr);
+	strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_PLAYER_MOVE_REQUEST\n");
+	SendRes = SendString(SendStr, *t_socket);
+	if (SendRes == TRNS_FAILED) {
+		printf("Service socket error while writing, closing thread.\n");
+		closesocket(*t_socket);
+		return 1;
+	}
+	free(AcceptedStr);
+	//TBD: call to function that calculate the result massage
+	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
+	if (check_transaction_return_value(RecvRes, t_socket))
+		return 1;
+	int massage_type = get_massage_type(AcceptedStr);
+	get_str_of_massage_type(massage_type, Massage_type_str);
+	if (massage_type != CLIENT_PLAYER_MOVE) {
+		printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
+		//TBD: deal with incorrect massages
+		//this is coding falut!!
+	}
+	int guess = get_4digit_number_from_massage(AcceptedStr);
 	
-	
+
+}
 
 
-	
-	//TBD: server approved massage
+void game_second_client(SOCKET* t_socket,HANDLE game_file,char* client_name) {
+	char SendStr[SEND_STR_SIZE];
+	TransferResult_t SendRes;
+	TransferResult_t RecvRes;
+	char* AcceptedStr = NULL;
+	char Massage_type_str[MAX_MASSAGE_TYPE];
+	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
+	if (check_transaction_return_value(RecvRes, t_socket))
+		return 1;
+	int massage_type = get_massage_type(AcceptedStr);
+	get_str_of_massage_type(massage_type, Massage_type_str);
+	if (massage_type != CLIENT_SETUP) {
+		printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
+		//TBD: deal with incorrect massages
+		//this is coding falut!!
+	}
+	int i = 0;
+	while (AcceptedStr[i] != ':')
+		i++;
+	i++;
+	char str_num [5] = { AcceptedStr[i + 3], AcceptedStr[i + 2],AcceptedStr[i + 1],AcceptedStr[i], '\0' };
+	int secret_number = atoi(str_num);
+	strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_PLAYER_MOVE_REQUEST\n");
+	SendRes = SendString(SendStr, *t_socket);
+	if (SendRes == TRNS_FAILED) {
+		printf("Service socket error while writing, closing thread.\n");
+		closesocket(*t_socket);
+		return 1;
+	}
+	//TBD: call to function that calculate the result massage
 
 
-	//TBD: server main manu massage
-	//TBD: server invite massage
+
+
+
+
 
 
 }

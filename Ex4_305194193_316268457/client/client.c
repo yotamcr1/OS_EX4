@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <winsock2.h>
-
+#include "Massage.h"
 #include "client.h"
 #include "SocketExampleShared.h"
 #include "SocketSendRecvTools.h"
@@ -17,7 +17,6 @@ static DWORD SendDataThread(void)
 {
 	char SendStr[5];// the sent massage is 4 ints 
 	TransferResult_t SendRes;
-
 	while (1)
 	{
 		gets_s(SendStr, sizeof(SendStr)); //Reading a string from the keyboard
