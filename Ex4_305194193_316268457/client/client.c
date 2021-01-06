@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <winsock2.h>
-
+#include "Massage.h"
 #include "client.h"
 #include "SocketExampleShared.h"
 #include "SocketSendRecvTools.h"
@@ -146,11 +146,11 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	);
 
 	WaitForMultipleObjects(2, hThread, FALSE, INFINITE);//TBD: infinite its ok?
-	TerminateThread(hThread[0], 0x555);//TBD: 0X555?
-	TerminateThread(hThread[1], 0x555);
-	CloseHandle(hThread[0]);
-	CloseHandle(hThread[1]);
-	closesocket(m_socket);
+	//TerminateThread(hThread[0], 0x555);//TBD: 0X555?
+	//rminateThread(hThread[1], 0x555);
+	//CloseHandle(hThread[0]);
+	//CloseHandle(hThread[1]);
+	losesocket(m_socket);
 	if (WSACleanup()) {//if wsacleanup failed
 		printf("WSACleanup failed with error code: : %d\n", WSAGetLastError());
 		return 1;
