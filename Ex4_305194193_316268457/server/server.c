@@ -18,6 +18,7 @@
 
 HANDLE ThreadHandles[NUM_OF_WORKER_THREADS];
 SOCKET ThreadInputs[NUM_OF_WORKER_THREADS];
+int Threads_wanna_play[NUM_OF_WORKER_THREADS] = { 0 };
 
 //functions from recitation: maybe we should need to create them.
 //should be in the header file
@@ -210,7 +211,6 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
-
 	massage_type = get_massage_type(AcceptedStr);
 	if (massage_type == CLIENT_DISCONNECT) {
 		//TBD: close the thread, maybe do more? 
@@ -224,6 +224,10 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 		//TBD: terminate program.. this is for debug purpose anyway
 	}
 	//Client versus massage recived:
+	//
+
+
+
 
 
 
