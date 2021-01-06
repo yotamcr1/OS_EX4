@@ -69,9 +69,7 @@ static DWORD RecvDataThread(void)
 void ClientMain(char* username, int serverport, unsigned long serverIP_Address) {
 	printf("welcom to ClientMain\n");
 	SOCKADDR_IN clientService;
-	TransferResult_t SendRes;
-	TransferResult_t RecvRes;
-	HANDLE hThread[2];
+	int answer_num;
 	// Initialize Winsock.
 	WSADATA wsaData; //Create a WSADATA object called wsaData.
 	char Massage_type_str[MAX_MASSAGE_TYPE];
@@ -98,7 +96,9 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	// Check for general errors.
 
 	iResult = connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService));
-	handle_diconnecting(iResult,clientService,serverport,serverIP_Address);
+	if (iResult == SOCKET_ERROR) {
+		handle_diconnecting(clientService, serverport, serverIP_Address,0);
+	}
 	printf("Connected to server on %lu:%d\n", serverIP_Address, serverport);//connected successfully
 
 	//send the client name to the server:
@@ -109,47 +109,52 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 		printf("error while sending username to server\n");
 		return 0x555;
 	}
-	/*TBD: 
-	if there is no answer from server: handle_diconnecting(SOCKET_ERROR,clientService,serverport,serverIP_Address);
-	if answer_type== SERVER_DENIED printf:
-	Server on <ip>:<port> denied the connection request.
-	Choose what to do next:
-	1. Try to reconnect
-	2. Exit
+	/*TBD: use setsocket for getting answer from the server
+	if there is no answer from server: handle_diconnecting(clientService,serverport,serverIP_Address,0);
 	*/
-	//maybe do everything until point 5 from instruction within a while loop?
-	RecvRes = ReceiveString(&AcceptedStr, m_socket); //AcceptedStr is dynamic allocated, and should be free
-	/*if (handle_return_value(RecvRes, m_socket))
-		return 1;*/ //TBD: check RecvRes 
-	/*if (AcceptedStr == "SERVER_DENIED") {
-		handle_server_deny(iResult, clientService, serverport, serverIP_Address);
-	}*/
+	int massage_type = receive_msg(m_socket);
+	if (massage_type == SERVER_DENIED) {
+		handle_connection_problems(clientService, serverport, serverIP_Address,1);
+	}
+	if (massage_type == SERVER_APPROVED) {
+		massage_type = receive_msg(m_socket);
+		while ((massage_type == SERVER_MAIN_MENU)||(massage_type==SERVER_NO_OPPONENTS)) {
+			printf("Choose what to do next:\n 1. Play against another client\n2. Quit\n");
+			scanf_s("%d", &answer_num);
+			if (answer_num == 1) {
+				if ((SendString(CLIENT_VERSUS_MSG, m_socket)) == TRNS_FAILED)
+				{
+					printf("error while sending CLIENT_VERSUS_MSG to server\n");
+					return 0x555;
+				}
+			}
+			else {//send to server client disconnect and exit
+				if ((SendString(CLIENT_DISCONNECT, m_socket)) == TRNS_FAILED)
+				{
+					printf("error while sending CLIENT_DISCONNECT to server\n");
+					return 0x555;
+				}
+				WSACleanup();//TBD: check if all resources are free:
+				iResult = closesocket(m_socket);
+				if (iResult == SOCKET_ERROR)
+					printf("closesocket function failed with error: %ld\n", WSAGetLastError());
+				exit(1);//TBD: call to gracefull shutdown function for client
+			}
+			massage_type = receive_msg(m_socket);
+			//TBD: have to wait 30 seconds for answer- HOW?
+			if (massage_type == SERVER_INVITE) {
+				printf("Game is on!\n");
+				//TBD: CALL GAME FUNCTION
+				//!!!!TBD: POINT 9 IN CLIENT RUN DETAILS
+			}
+			//else: massage_type= SERVER_NO_OPPONENTS then show MAIN_MENU again!
+		}
+		
+	}
 
-	// Send and receive data.
-	hThread[0] = CreateThread(
-		NULL,
-		0,
-		(LPTHREAD_START_ROUTINE)SendDataThread,
-		NULL,
-		0,
-		NULL
-	);
 
-	hThread[1] = CreateThread(
-		NULL,
-		0,
-		(LPTHREAD_START_ROUTINE)RecvDataThread,
-		NULL,
-		0,
-		NULL
-	);
 
-	WaitForMultipleObjects(2, hThread, FALSE, INFINITE);//TBD: infinite its ok?
-	//TerminateThread(hThread[0], 0x555);//TBD: 0X555?
-	//rminateThread(hThread[1], 0x555);
-	//CloseHandle(hThread[0]);
-	//CloseHandle(hThread[1]);
-	losesocket(m_socket);
+	closesocket(m_socket);
 	if (WSACleanup()) {//if wsacleanup failed
 		printf("WSACleanup failed with error code: : %d\n", WSAGetLastError());
 		return 1;
@@ -158,12 +163,18 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 }
 
 
-//the function handle in cases of unexpected disconnecting from the server or timeout
-void handle_diconnecting(int iResult, SOCKADDR_IN clientService, int serverport, unsigned long serverIP_Address) {
+//the function handle cases of: 1. unexpected disconnecting from the server 2. timeout 3.when server denied connection
+//input: clientservice, port, ip address, server_denied_flag- if its 1 will handle server denied case, else handle disconnecting
+void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsigned long serverIP_Address, int server_denied_flag) {
 	int answer_num;
-	int iResult_local = iResult;
+	int iResult_local = SOCKET_ERROR;
+	if (server_denied_flag == 1) {
+		printf("Server on %lu:%d denied the connection request.\n", serverIP_Address, serverport);
+	}
+	else 
+		printf("Failed connecting to server on % lu: % d.\n", serverIP_Address, serverport);
 	while (iResult_local == SOCKET_ERROR) {
-		printf("Failed connecting to server on %lu:%d.\nChoose what to do next:\n 1. Try to reconnect\n2. Exit\n", serverIP_Address, serverport);
+		printf("Choose what to do next:\n 1. Try to reconnect\n2. Exit\n");
 		scanf_s("%d", &answer_num);
 		if (answer_num == 1) {
 			iResult_local = connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService));
@@ -173,7 +184,7 @@ void handle_diconnecting(int iResult, SOCKADDR_IN clientService, int serverport,
 			iResult_local = closesocket(m_socket);
 			if (iResult_local == SOCKET_ERROR)
 				printf("closesocket function failed with error: %ld\n", WSAGetLastError());
-			exit(1);//TBD: call to shutdown function for client
+			exit(1);//TBD: call to gracefull shutdown function for client
 		}
 	}
 	return;
@@ -198,3 +209,11 @@ void handle_server_deny(int iResult, SOCKADDR_IN clientService, int serverport, 
 	}
 	return;
 }*/
+/*
+if answer_type == SERVER_DENIED printf :
+Server on <ip> : <port> denied the connection request.
+Choose what to do next :
+	1. Try to reconnect
+	2. Exit
+	*/
+

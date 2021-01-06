@@ -75,4 +75,7 @@ TransferResult_t ReceiveBuffer( char* OutputBuffer, int RemainingBytesToReceive,
  */ 
 TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd );
 
+int receive_msg(SOCKET socket);
+
+
 #endif // SOCKET_SEND_RECV_TOOLS_H

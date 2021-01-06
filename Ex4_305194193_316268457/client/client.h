@@ -3,7 +3,7 @@
 
 #include <winsock2.h>
 
-void handle_diconnecting(int iResult, SOCKADDR_IN clientService, int serverport, unsigned long serverIP_Address);
+void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsigned long serverIP_Address, int server_denied_flag);
 void ClientMain(char* username, int serverport, unsigned long serverIP_Address);
 
 
