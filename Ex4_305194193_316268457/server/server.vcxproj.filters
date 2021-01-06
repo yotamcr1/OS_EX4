@@ -30,6 +30,9 @@
     <ClCompile Include="..\Share\SocketSendRecvTools.c">
       <Filter>Shared Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Lock.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="server.h">
@@ -43,6 +46,9 @@
     </ClInclude>
     <ClInclude Include="..\Share\Massage.h">
       <Filter>Shared Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Lock.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
