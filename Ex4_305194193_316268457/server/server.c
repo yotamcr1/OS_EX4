@@ -321,7 +321,7 @@ void game_first_client(SOCKET* t_socket, HANDLE game_file, char* client_name) {
 	}
 	int guess = get_4digit_number_from_massage(AcceptedStr);
 	
-
+	
 }
 
 

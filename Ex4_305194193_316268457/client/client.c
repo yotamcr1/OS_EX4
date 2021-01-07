@@ -145,8 +145,8 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	);
 
 	WaitForMultipleObjects(2, hThread, FALSE, INFINITE);//TBD: infinite its ok?
-	TerminateThread(hThread[0], 0x555);//TBD: 0X555?
-	TerminateThread(hThread[1], 0x555);
+	//TerminateThread(hThread[0], 0x555);//TBD: 0X555?
+	//TerminateThread(hThread[1], 0x555);
 	CloseHandle(hThread[0]);
 	CloseHandle(hThread[1]);
 	closesocket(m_socket);
