@@ -35,7 +35,7 @@ int get_massage_type(const char* str) {
 	if (strcmp(temp_str, "SERVER_INVITE"))
 		return SERVER_INVITE;
 	if (strcmp(temp_str, "SERVER_SETUP_REQUSET"))
-		return SERVER_SETUP_REQUSET;
+		return SERVER_SETUP_REQUEST;
 	if (strcmp(temp_str, "SERVER_PLAYER_MOVE_REQUEST"))
 		return SERVER_PLAYER_MOVE_REQUEST;
 	if (strcmp(temp_str, "SERVER_GAME_RESULTS"))
@@ -73,7 +73,7 @@ int get_str_of_massage_type(int type,char* destination) {
 		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_DENIED");
 	if (type == SERVER_INVITE)
 		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_INVITE");
-	if (type == SERVER_SETUP_REQUSET)
+	if (type == SERVER_SETUP_REQUEST)
 		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_SETUP_REQUSET");
 	if (type == SERVER_PLAYER_MOVE_REQUEST)
 		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_PLAYER_MOVE_REQUEST");
@@ -229,4 +229,12 @@ int receive_msg(SOCKET socket) {
 	int massage_type = get_massage_type(AcceptedStr);
 	free(AcceptedStr);//AcceptedStr is dynamic allocated, and should be free
 	return massage_type;
+}
+
+char* concatenate_str_for_msg(char* massage_type, char* parameter) {
+	char SendStr[SEND_STR_SIZE];
+	strcpy_s(SendStr, SEND_STR_SIZE * sizeof(char), massage_type);
+	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), parameter);
+	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), "\n");
+	return SendStr;
 }
