@@ -129,7 +129,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 				}
 			}
 			else {//send to server client disconnect and exit
-				if ((SendString(CLIENT_DISCONNECT, m_socket)) == TRNS_FAILED)
+				if ((SendString(CLIENT_DISCONNECT_MSG, m_socket)) == TRNS_FAILED)
 				{
 					printf("error while sending CLIENT_DISCONNECT to server\n");
 					return 0x555;
@@ -145,15 +145,13 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 			if (massage_type == SERVER_INVITE) {
 				printf("Game is on!\n");
 				//TBD: CALL GAME FUNCTION
+				game_routine(m_socket);
 				//!!!!TBD: POINT 9 IN CLIENT RUN DETAILS
 			}
 			//else: massage_type= SERVER_NO_OPPONENTS then show MAIN_MENU again!
 		}
 		
 	}
-
-
-
 	closesocket(m_socket);
 	if (WSACleanup()) {//if wsacleanup failed
 		printf("WSACleanup failed with error code: : %d\n", WSAGetLastError());
@@ -161,6 +159,28 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	}
 	return;
 }
+
+/*
+void game_routine(SOCKET m_socket) {
+	int massage_type = receive_msg(m_socket);
+	char SendStr[5];
+
+	if (massage_type == SERVER_SETUP_REQUEST) {
+		printf("Choose your 4 digits:\n");
+		gets_s(SendStr, sizeof(SendStr)); //Reading a string from the keyboard
+
+		SendRes = SendString(SendStr, m_socket);
+
+		if (SendRes == TRNS_FAILED)
+		{
+			printf("Socket error while trying to write data to socket\n");
+			return 0x555;
+		}
+	}
+}*/
+
+
+
 
 
 //the function handle cases of: 1. unexpected disconnecting from the server 2. timeout 3.when server denied connection
