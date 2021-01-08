@@ -218,3 +218,15 @@ TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd )
 		
 	return RecvRes;
 }
+
+
+//the function treat recieve massage and return the massage type
+int receive_msg(SOCKET socket) {
+	int AcceptedStr, RecvRes;
+	RecvRes = ReceiveString(&AcceptedStr, socket); 
+	/*if (handle_return_value(RecvRes, m_socket))
+	return 1;*/ //TBD: check RecvRes 
+	int massage_type = get_massage_type(AcceptedStr);
+	free(AcceptedStr);//AcceptedStr is dynamic allocated, and should be free
+	return massage_type;
+}

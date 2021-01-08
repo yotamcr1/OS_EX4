@@ -26,7 +26,8 @@
 #define SERVER_WIN 16 
 //end of server massages
 //////////////////////////
-/*
+
+
 //massages definition:// check if it is OK
 #define CLIENT_REQUEST_MSG "CLIENT_REQUEST"
 #define CLIENT_VERSUS_MSG "CLIENT_VERSUS"
@@ -47,7 +48,7 @@
 #define SERVER_NO_OPPONENTS_MSG "SERVER_NO_OPPONENTS"
 #define SERVER_OPPONENT_QUIT_MSG "SERVER_OPPONENT_QUIT"
 #define SERVER_WIN_MSG "SERVER_WIN"
-*/
+
 #define INVALID_MASSAGE_TYPE 17
 
 
