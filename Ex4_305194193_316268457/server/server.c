@@ -1,4 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 
 #include <windows.h>
 #include <winsock2.h>
@@ -15,6 +16,7 @@
 #define SERVER_ADDRESS_STR "192.168.0.1"
 #define DEFAULT_BUFLEN 512
 #define SEND_STR_SIZE 120
+#define MAX_WRITE_BYTES_TO_GAME_FILE 200 //TBD: check if it neccessary and the size 
 
 //Global parameters
 HANDLE ThreadHandles[NUM_OF_WORKER_THREADS];
@@ -22,6 +24,8 @@ SOCKET ThreadInputs[NUM_OF_WORKER_THREADS];
 int Threads_wanna_play[NUM_OF_WORKER_THREADS] = { 0 };
 HANDLE Thread_Connection_File[NUM_OF_WORKER_THREADS];
 lock* p_lock = NULL;
+HANDLE fisrtMutex, secondMutex;
+int is_first_client_connected = 0, is_second_client_connected = 0;
 
 
 //functions from recitation: maybe we should need to create them.
@@ -31,12 +35,60 @@ static void CleanupWorkerThreads();
 static DWORD ServiceThread(SOCKET* t_socket);
 //
 
+
+void write_to_file(HANDLE file, char* str) {
+
+	DWORD dwBytesWrite = 0;
+	write_lock(p_lock);
+	//TBD: write operation
+	if (!WriteFile(file, str, MAX_WRITE_BYTES_TO_GAME_FILE, &dwBytesWrite, NULL)) {
+		printf("error while trying to write into the output file. exit\n");
+		//TBD: close everything
+	}
+	write_release(p_lock);
+}
+
+void read_from_file(HANDLE file, char* str) {
+	read_lock(p_lock);
+	DWORD dwBytesRead = 0;
+	//TBD: read opreation
+	if (ReadFile(file, str, MAX_WRITE_BYTES_TO_GAME_FILE, &dwBytesRead, NULL)) 
+		read_release(p_lock);
+}
+
+
+void initialize_mutex() {
+
+	fisrtMutex = CreateMutex(
+		NULL,              // default security attributes
+		FALSE,             // initially not owned
+		NULL);             // unnamed mutex
+
+	if (fisrtMutex == NULL)
+	{
+		printf("CreateMutex error: %d\n, exit\n", GetLastError());
+		exit (1);
+	}
+	secondMutex = CreateMutex(
+		NULL,              // default security attributes
+		FALSE,             // initially not owned
+		NULL);             // unnamed mutex
+
+	if (secondMutex == NULL)
+	{
+		CloseHandle(fisrtMutex);
+		printf("CreateMutex error: %d\n, exit\n", GetLastError());
+		exit(1);
+	}
+}
+
 void MainServer(int ServerPort) {
 
 	SOCKET MainSocket = INVALID_SOCKET;
 	unsigned long Address;
 	SOCKADDR_IN service;
 	int bindRes,ListenRes,Ind;
+	initialize_mutex(); //initialized global firstMutex, secondMutex 
 	p_lock = InitializLock(NUM_OF_WORKER_THREADS);
 
 	// Initialize Winsock.
@@ -145,12 +197,7 @@ static int FindFirstUnusedThreadSlot()
 
 	return Ind;
 }
-/// <summary>
-/// Check if the transaction success. if not, print an error and return 1. else return 0
-/// </summary>
-/// <param name="tr"></param> enum contains the transaction status
-/// <param name="t_socket"></param> the related socket of the transaction
-/// <returns></returns> 1 if failed, 0 otherwise.
+
 
 int check_transaction_return_value(TransferResult_t tr, SOCKET* t_socket) {
 	if (tr == TRNS_FAILED)
@@ -168,6 +215,17 @@ int check_transaction_return_value(TransferResult_t tr, SOCKET* t_socket) {
 	return 0;
 }
 
+DWORD get_file_orig_size(HANDLE file) {
+	DWORD size = GetFileSize(
+		file, NULL
+	);
+	if (size == INVALID_FILE_SIZE) {
+		printf("can't calculate origianl size file. exit\n");
+		return NULL;
+	}
+}
+
+
 void get_client_name(char* client_request_massage, char* destination_client_name) {
 	int i = 0,j=0; 
 	while (client_request_massage[i] != ':')
@@ -181,18 +239,31 @@ void get_client_name(char* client_request_massage, char* destination_client_name
 	destination_client_name[j] = '\0';
 }
 
+int send_massage(char* str,SOCKET* t_socket) {
 
+	char SendStr[SEND_STR_SIZE];
+	TransferResult_t SendRes;
+	strcpy_s(SendStr, SEND_STR_SIZE, str);
+	SendRes = SendString(SendStr, *t_socket);
+	if (SendRes == TRNS_FAILED)
+	{
+		printf("Service socket error while writing, closing thread.\n");
+		closesocket(*t_socket);
+		return 1;
+	}
+}
 
 static DWORD ServiceThread(SOCKET* t_socket) {
 
 	char SendStr[SEND_STR_SIZE];
+	DWORD wait_code;
 	BOOL Done = FALSE;
-	TransferResult_t SendRes;
-	TransferResult_t RecvRes;
+	TransferResult_t SendRes, RecvRes;
 	char* AcceptedStr = NULL;
 	char Client_Name[MAX_USER_NAME];
 	char Massage_type_str[MAX_MASSAGE_TYPE];
 	DWORD last_error;
+	int am_i_first = 0;
 
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
@@ -206,20 +277,13 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	}
 	get_client_name(AcceptedStr, Client_Name);
 	free(AcceptedStr);
-	strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_APPROVED\n");
-	SendRes = SendString(SendStr, *t_socket);
-	if (SendRes == TRNS_FAILED)
-	{
-		printf("Service socket error while writing, closing thread.\n");
-		closesocket(*t_socket);
+	if (send_massage(SERVER_APPROVED_MSG, t_socket)) {
+		//TBD: ERROR OCCUR
 		return 1;
 	}
-	strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_MAIN_MENU\n");
-	SendRes = SendString(SendStr, *t_socket);
-	if (SendRes == TRNS_FAILED)
-	{
-		printf("Service socket error while writing, closing thread.\n");
-		closesocket(*t_socket);
+server_main_menu:
+	if (send_massage(SERVER_MAIN_MENU_MSG, t_socket)) {
+		//TBD: ERROR OCCUR
 		return 1;
 	}
 	//TBD: here we have to wait forever until user decide in client side
@@ -239,42 +303,83 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 		//TBD: terminate program.. this is for debug purpose anyway
 	}
 	/*Client Versus Massage type:*/
+	/* critical code section */
+	write_lock(p_lock);
 	HANDLE Thread_connection_file = CreateFileA(
-		"game_file_connection.txt",
+		"GameSession.txt",
 		GENERIC_READ | GENERIC_WRITE, //Open file with write read
 		FILE_SHARE_READ | FILE_SHARE_WRITE, //the file should be shared by the threads.
 		NULL, //default security mode
-		CREATE_NEW, //try to create it. if alrady opened - there's a player waiting, else: this thread is first player
+		OPEN_ALWAYS, //try to create it. if alrady opened - there's a player waiting, else: this thread is first player
 		FILE_ATTRIBUTE_NORMAL, //normal attribute
-		NULL);//not relevant for open file operations. 
-	last_error = GetLastError();
-	if ((Thread_connection_file == INVALID_HANDLE_VALUE) && (last_error != ERROR_FILE_EXISTS)) {
-		printf("The file doesn't exist, but error was occourd during the attempt to create it.\n");
-		//TBD:deal with this error
-		//but this thread should die here anyway
-		closesocket(*t_socket);
-		return 0;
+		NULL);//not relevant for open file operations.
+	DWORD ret_val = get_file_orig_size(Thread_connection_file);
+	if (NULL == ret_val) {
+		//TBD: error occur, should close everything and die
+		printf("error occur\n");
 	}
-	if (last_error == ERROR_FILE_EXISTS) { //there is 2 players in the server! start playing
-		//ask from the player send 4 numbers using SERVERT_SETUP_REQ and then wait for the answer
-		Thread_connection_file = CreateFileA("game_file_connection.txt", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_SETUP_REQUSET\n");
-		SendRes = SendString(SendStr, *t_socket);
-		if (SendRes == TRNS_FAILED)	{
-			printf("Service socket error while writing, closing thread.\n");
-			closesocket(*t_socket);
+	if (ret_val == 0 || am_i_first == 1) { //this is the first thread - since the size of the file is still zero (bytes)
+		write_to_file(Thread_connection_file,Client_Name);
+		am_i_first = 1; //this is the first one, and this parameter is uniqe for that thread. 
+		//fisrtMutex should be occupied by the second thread, until he finish to write
+		wait_code = WaitForSingleObject(fisrtMutex, TIMEOUT_30SEC /*TBD: CHECK TIMES!!!!!!!*/ );
+		if (WAIT_OBJECT_0 != wait_code)
+		{
+			printf("The second client did not connect in 30 times.\n");
+			if (send_massage(SERVER_NO_OPPONENTS_MSG, t_socket)) {
+				//TBD: ERROR OCCUR
+				return 1;
+			}
+			goto server_main_menu; //all over again 
+		}
+		//HERE THERE IS 2 CLIENT CONNECTED!
+		if (send_massage(SERVER_SETUP_REQUEST_MSG, t_socket)) {
+			//TBD: ERROR OCCUR
 			return 1;
 		}
-		//TBD: Function to implement the game when 2 threads are available.
-		game_second_client(t_socket, Thread_connection_file,Client_Name);
-				
+
+		RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
+		if (check_transaction_return_value(RecvRes, t_socket))
+			return 1;
+		int secret_number = get_4digit_number_from_massage(AcceptedStr);
+		free(AcceptedStr);
+			
+		//TBD: HERE WE HAVE TO WAIT FOR BOTH CLIENT SENDS THEIR NUMBER
+		//TBD: HERE WE HAVE TO WRITE IT TO THE FILE
+	
+		if (send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
+			//TBD: ERROR OCCUR
+			return 1;
+		}
+
+
+		RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
+		if (check_transaction_return_value(RecvRes, t_socket))
+			return 1;
+		int massage_type = get_massage_type(AcceptedStr);
+		get_str_of_massage_type(massage_type, Massage_type_str);
+		if (massage_type != CLIENT_PLAYER_MOVE) {
+			printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
+			//TBD: deal with incorrect massages
+			//this is coding falut!!
+		}
+		int guess = get_4digit_number_from_massage(AcceptedStr);
+		//TBD: call to function that calculate the result massage
+		//Here we send the secret number and the guess of the first client
+		char string [MAX_WRITE_BYTES_TO_GAME_FILE];
+		char temp_num[5];
+		strcpy_s(string, _countof(string), "Client1 secret number:");
+		//itoa(secret_number,temp_num,
+		strcat_s(string, _countof(string), temp_num);
+		strcat_s(string, _countof(string), "and ");
+		strcat_s(string, _countof(string), "strcat_s!");
+
 	}
-	else {}; //TBD: THIS IS THE FIRST PLAYER!!! 
 }
 
 int get_4digit_number_from_massage(char* str) {
 	int i = 0;
-	while (str[i] != ':')
+	while (str[i] != ':') //this is the delimeter. after the char ':', the next 4 chars will be the digits. 
 		i++;
 	i++;
 	char str_num[5] = { str[i + 3], str[i + 2],str[i + 1],str[i], '\0' };
@@ -312,7 +417,7 @@ void game_first_client(SOCKET* t_socket, HANDLE game_file, char* client_name) {
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
-	int massage_type = get_massage_type(AcceptedStr);
+	massage_type = get_massage_type(AcceptedStr);
 	get_str_of_massage_type(massage_type, Massage_type_str);
 	if (massage_type != CLIENT_PLAYER_MOVE) {
 		printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
@@ -324,40 +429,6 @@ void game_first_client(SOCKET* t_socket, HANDLE game_file, char* client_name) {
 	
 }
 
-
-void game_second_client(SOCKET* t_socket,HANDLE game_file,char* client_name) {
-	char SendStr[SEND_STR_SIZE];
-	TransferResult_t SendRes;
-	TransferResult_t RecvRes;
-	char* AcceptedStr = NULL;
-	char Massage_type_str[MAX_MASSAGE_TYPE];
-	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
-	if (check_transaction_return_value(RecvRes, t_socket))
-		return 1;
-	int massage_type = get_massage_type(AcceptedStr);
-	get_str_of_massage_type(massage_type, Massage_type_str);
-	if (massage_type != CLIENT_SETUP) {
-		printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
-		//TBD: deal with incorrect massages
-		//this is coding falut!!
-	}
-	int i = 0;
-	while (AcceptedStr[i] != ':')
-		i++;
-	i++;
-	char str_num [5] = { AcceptedStr[i + 3], AcceptedStr[i + 2],AcceptedStr[i + 1],AcceptedStr[i], '\0' };
-	int secret_number = atoi(str_num);
-	strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_PLAYER_MOVE_REQUEST\n");
-	SendRes = SendString(SendStr, *t_socket);
-	if (SendRes == TRNS_FAILED) {
-		printf("Service socket error while writing, closing thread.\n");
-		closesocket(*t_socket);
-		return 1;
-	}
-	//TBD: call to function that calculate the result massage
-
-
-}
 
 
 /// <summary>
@@ -386,7 +457,6 @@ void game_calculate_and_update_status(int numA, int numB, int A_guess_B, int B_g
 				num_of_cows_B += 1;
 		}
 	}
-	
 	printf("A number is %d, B number is %d\n",numA,numB);
 	printf("A geuss %d, B guess %d\n", A_guess_B, B_guess_A);
 	printf("A: bulls %d , cows %d\n",num_of_bull_A,num_of_cows_A);

@@ -11,7 +11,9 @@
 #include <stdbool.h>
 #include <windows.h>
 
-#define TIMEOUT 10000 
+#define TIMEOUT 10000 //TBD: CHANGE THE VALUE TO REALLY 15 SEC
+#define TIMEOUT_15SEC 100000 //TBD: CHANGE THE VALUE TO REALLY 15 SEC
+#define TIMEOUT_30SEC 100000 //TBD: CHANGE THE VALUE TO REALLY 15 SEC
 
 //struct definition:
 
