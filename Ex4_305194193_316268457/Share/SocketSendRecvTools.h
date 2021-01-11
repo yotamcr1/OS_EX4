@@ -77,5 +77,6 @@ TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd );
 
 int receive_msg(SOCKET socket);
 
+char* concatenate_str_for_msg(char* massage_type, char* parameter);
 
 #endif // SOCKET_SEND_RECV_TOOLS_H

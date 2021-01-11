@@ -230,3 +230,11 @@ int receive_msg(SOCKET socket) {
 	free(AcceptedStr);//AcceptedStr is dynamic allocated, and should be free
 	return massage_type;
 }
+
+char* concatenate_str_for_msg(char* massage_type, char* parameter) {
+	char SendStr[SEND_STR_SIZE];
+	strcpy_s(SendStr, SEND_STR_SIZE * sizeof(char), massage_type);
+	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), parameter);
+	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), "\n");
+	return SendStr;
+}
