@@ -357,12 +357,6 @@ void game_second_client(SOCKET* t_socket,HANDLE game_file,char* client_name) {
 	//TBD: call to function that calculate the result massage
 
 
-
-
-
-
-
-
 }
 
 

@@ -99,7 +99,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 			//TBD: is the loop condition is OK for another game???
 		}
 	}
-	closesocket(m_socket);
+	closesocket(m_socket);//TBD: gracefull shutdown?
 	if (WSACleanup()) {//if wsacleanup failed
 		printf("WSACleanup failed with error code: : %d\n", WSAGetLastError());
 		return 1;
@@ -139,12 +139,12 @@ void game_routine(SOCKET m_socket) {
 				printf("Socket error while trying to write data to socket\n");
 				return 0x555;
 			}
-			RecvRes = ReceiveString(&AcceptedStr, socket);
-			/*if (handle_return_value(RecvRes, m_socket))
-			return 1;*/ //TBD: check RecvRes 
+			RecvRes = ReceiveString(&AcceptedStr, m_socket);
+			if (handle_return_value(RecvRes, &m_socket))
+				return 1;//TBD: is it OK?
 			extract_game_results(AcceptedStr, Bulls, Cows, opponent_username, opponent_guess);
 			printf("Bulls: %s\n Cows: %s\n %s played: %s\n", Bulls, Cows, opponent_username, opponent_guess);
-			RecvRes = ReceiveString(&AcceptedStr, socket);
+			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			/*if (handle_return_value(RecvRes, m_socket))
 			return 1;*/ //TBD: check RecvRes 
 			massage_type = get_massage_type(AcceptedStr);
@@ -160,7 +160,6 @@ void game_routine(SOCKET m_socket) {
 		}
 		else{
 			printf("It's a tie\n");
-			//TBD: gracefull shutdown?
 		}	
 	}
 }
@@ -250,4 +249,8 @@ void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsig
 		}
 	}
 	return;
+}
+
+void gracefull_shutdown() {
+
 }
