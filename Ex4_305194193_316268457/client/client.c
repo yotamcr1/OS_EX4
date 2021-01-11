@@ -31,7 +31,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 
 	 //Create a sockaddr_in object clientService and set  values.
 	clientService.sin_family = AF_INET;//AF_INET is the Internet address family
-	clientService.sin_addr.s_addr = inet_addr(serverIP_Address); //Setting the IP address to connect to
+	clientService.sin_addr.s_addr = serverIP_Address; //Setting the IP address to connect to
 	clientService.sin_port = htons(serverport); //Setting the port to connect to.
 
 	// Call the connect function, passing the created socket and the sockaddr_in structure as parameters. 
@@ -41,6 +41,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	if (iResult == SOCKET_ERROR) {
 		handle_connection_problems(clientService, serverport, serverIP_Address,0);
 	}
+	//TBD:change the printed IP address
 	printf("Connected to server on %lu:%d\n", serverIP_Address, serverport);//connected successfully
 
 	//send the client name to the server:
@@ -227,9 +228,9 @@ void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsig
 		printf("Server on %lu:%d denied the connection request.\n", serverIP_Address, serverport);
 	}
 	else 
-		printf("Failed connecting to server on % lu: % d.\n", serverIP_Address, serverport);
+		printf("Failed connecting to server on % lu: %d.\n", serverIP_Address, serverport);
 	while (iResult_local == SOCKET_ERROR) {
-		printf("Choose what to do next:\n 1. Try to reconnect\n2. Exit\n");
+		printf("Choose what to do next:\n1. Try to reconnect\n2. Exit\n");
 		scanf_s("%d", &answer_num);
 		if (answer_num == 1) {
 			iResult_local = connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService));

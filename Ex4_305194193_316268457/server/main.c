@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[]) {
 	printf("welcom to server main\n");
-	printf("this is the argument: %s", argv[1]);
+	//printf("this is the argument: %s", argv[1]);
 	int serverport = atoi(argv[1]);
 	MainServer(serverport);
 }
