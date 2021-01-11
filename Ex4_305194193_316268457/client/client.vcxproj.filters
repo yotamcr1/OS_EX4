@@ -35,9 +35,6 @@
     <ClInclude Include="client.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Share\SocketExampleShared.h">
-      <Filter>Shared Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\Share\SocketSendRecvTools.h">
       <Filter>Shared Header Files</Filter>
     </ClInclude>

@@ -3,10 +3,12 @@
 #endif
 #include <stdio.h>
 #include <string.h>
+#include "client.h"
 #include <winsock2.h>
 #include "Massage.h"
+#pragma comment(lib,"ws2_32.lib") //Winsock Library
 
-int main(int argc, char* argv) {
+int main(int argc, char* argv[]) {
 	
 	printf("welcom to main within client project\n");
 	unsigned long serverIP_Address;
@@ -19,6 +21,6 @@ int main(int argc, char* argv) {
 
 	//TBD: CHECKS INPUTS AND ETC
 
-	ClientMain();
+	ClientMain(username, serverPort, serverIP_Address);
 
 }

@@ -1,22 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "SocketExampleShared.h"
-#include "SocketSendRecvTools.h"
-#include "Massage.h"
-#include "Lock.h"
-
-
-#define NUM_OF_WORKER_THREADS 2
-#define SERVER_ADDRESS_STR "192.168.0.1"
-#define DEFAULT_BUFLEN 512
-#define SEND_STR_SIZE 120
-#define MAX_WRITE_BYTES_TO_GAME_FILE 200 //TBD: check if it neccessary and the size 
+#include "server.h"
 
 //Global parameters
 HANDLE ThreadHandles[NUM_OF_WORKER_THREADS];
@@ -26,14 +8,6 @@ HANDLE Thread_Connection_File[NUM_OF_WORKER_THREADS];
 lock* p_lock = NULL;
 HANDLE fisrtMutex, secondMutex;
 int is_first_client_connected = 0, is_second_client_connected = 0;
-
-
-//functions from recitation: maybe we should need to create them.
-//should be in the header file
-static int FindFirstUnusedThreadSlot();
-static void CleanupWorkerThreads();
-static DWORD ServiceThread(SOCKET* t_socket);
-//
 
 
 void write_to_file(HANDLE file, char* str) {
@@ -198,22 +172,6 @@ static int FindFirstUnusedThreadSlot()
 	return Ind;
 }
 
-
-int check_transaction_return_value(TransferResult_t tr, SOCKET* t_socket) {
-	if (tr == TRNS_FAILED)
-	{
-		printf("Service socket error while reading, closing thread.\n");
-		closesocket(*t_socket);
-		return 1;
-	}
-	else if (tr == TRNS_DISCONNECTED)
-	{
-		printf("Connection closed while reading, closing thread.\n");
-		closesocket(*t_socket);
-		return 1;
-	}
-	return 0;
-}
 
 DWORD get_file_orig_size(HANDLE file) {
 	DWORD size = GetFileSize(

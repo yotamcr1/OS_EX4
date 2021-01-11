@@ -1,10 +1,9 @@
+
+
 #include "SocketSendRecvTools.h"
-#include <stdio.h>
-#include <string.h>
 #include "Massage.h"
 
 //Some of the fils is taken from ExampleCode of Recitation 10, course "Introduction to Operation Systems."
-
 
 int get_massage_type(const char* str) {
 
@@ -224,7 +223,7 @@ TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd )
 int receive_msg(SOCKET socket) {
 	int AcceptedStr, RecvRes;
 	RecvRes = ReceiveString(&AcceptedStr, socket); 
-	if (handle_return_value(RecvRes, &socket))
+	if (check_transaction_return_value(RecvRes, &socket))
 		return 1; //TBD: is it OK?
 	int massage_type = get_massage_type(AcceptedStr);
 	free(AcceptedStr);//AcceptedStr is dynamic allocated, and should be free
@@ -237,4 +236,22 @@ char* concatenate_str_for_msg(char* massage_type, char* parameter) {
 	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), parameter);
 	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), "\n");
 	return SendStr;
+}
+
+
+
+int check_transaction_return_value(TransferResult_t tr, SOCKET* t_socket) {
+	if (tr == TRNS_FAILED)
+	{
+		printf("Service socket error while reading, closing thread.\n");
+		closesocket(*t_socket);
+		return 1;
+	}
+	else if (tr == TRNS_DISCONNECTED)
+	{
+		printf("Connection closed while reading, closing thread.\n");
+		closesocket(*t_socket);
+		return 1;
+	}
+	return 0;
 }
