@@ -221,14 +221,14 @@ TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd )
 
 //the function treat recieve massage and return the massage type
 //if the function success, AcceptedStr is dynamic allocated and should be free!
-int receive_msg(SOCKET socket,char* AcceptedStr) {
+char* receive_msg(SOCKET socket,char* AcceptedStr,int* massage_type) {
 	TransferResult_t RecvRes;
 	RecvRes = ReceiveString(&AcceptedStr, socket); 
 	if (check_transaction_return_value(RecvRes, &socket))
 		return 1; //TBD: is it OK?
-	int massage_type = get_massage_type(AcceptedStr);
-	//free(AcceptedStr);//AcceptedStr is dynamic allocated, and should be free
-	return massage_type;
+	*massage_type = get_massage_type(AcceptedStr);
+	//return massage_type;
+	return AcceptedStr;
 }
 
 void concatenate_str_for_msg(char* massage_type, char* parameter,char* SendStr) {

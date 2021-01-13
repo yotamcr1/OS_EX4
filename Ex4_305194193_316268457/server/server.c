@@ -1,37 +1,45 @@
 #include "server.h"
 
 //Global parameters
-HANDLE ThreadHandles[NUM_OF_WORKER_THREADS];
+HANDLE ThreadHandles[NUM_OF_WORKER_THREADS]; 
 SOCKET ThreadInputs[NUM_OF_WORKER_THREADS];
-int Threads_wanna_play[NUM_OF_WORKER_THREADS] = { 0 };
 HANDLE Thread_Connection_File[NUM_OF_WORKER_THREADS];
 lock* p_lock = NULL;
-HANDLE fisrtMutex, secondMutex;
-int is_first_client_connected = 0, is_second_client_connected = 0;
+int number_of_connected_clients = 0;
+HANDLE semaphore_gun = NULL;
 
 
 void write_to_file(HANDLE file, char* str) {
 
 	DWORD dwBytesWrite = 0;
-	write_lock(p_lock);
+	//write_lock(p_lock);
 	//TBD: write operation
 	if (!WriteFile(file, str, MAX_WRITE_BYTES_TO_GAME_FILE, &dwBytesWrite, NULL)) {
 		printf("error while trying to write into the output file. exit\n");
 		//TBD: close everything
 	}
-	write_release(p_lock);
+	//write_release(p_lock);
 }
 
 void read_from_file(HANDLE file, char* str) {
-	read_lock(p_lock);
+	//read_lock(p_lock);
 	DWORD dwBytesRead = 0;
 	//TBD: read opreation
-	if (ReadFile(file, str, MAX_WRITE_BYTES_TO_GAME_FILE, &dwBytesRead, NULL)) 
-		read_release(p_lock);
+	if (!ReadFile(file, str, MAX_WRITE_BYTES_TO_GAME_FILE, &dwBytesRead, NULL))
+		//read_release(p_lock);
+		printf("Error occoured within read_from_file function\n");
 }
 
 
-void initialize_mutex() {
+void initialize_semaphore() {
+	semaphore_gun = CreateSemaphore(NULL, 0, 1, NULL);  
+	if (NULL == semaphore_gun){
+		printf("Error within initialize sempaphore functionn\n");
+		return 0; //Errror indicates
+	}
+	return 1; 
+}
+/*void initialize_mutex() {
 
 	fisrtMutex = CreateMutex(
 		NULL,              // default security attributes
@@ -54,7 +62,7 @@ void initialize_mutex() {
 		printf("CreateMutex error: %d\n, exit\n", GetLastError());
 		exit(1);
 	}
-}
+}*/
 
 void MainServer(int ServerPort) {
 
@@ -62,9 +70,9 @@ void MainServer(int ServerPort) {
 	unsigned long Address;
 	SOCKADDR_IN service;
 	int bindRes,ListenRes,Ind;
-	initialize_mutex(); //initialized global firstMutex, secondMutex 
+	//initialize_mutex(); //initialized global firstMutex, secondMutex 
 	p_lock = InitializLock(NUM_OF_WORKER_THREADS);
-
+	initialize_semaphore();
 	// Initialize Winsock.
 	WSADATA wsaData;
 	int StartupRes = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -223,9 +231,12 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	char Oponent_Client_Name[MAX_USER_NAME];
 	char Massage_type_str[MAX_MASSAGE_TYPE];
 	DWORD last_error;
-	int am_i_first = 0;
+	int am_i_first = 0; //Only the first Client will have am_i_first = 1
 
+	number_of_connected_clients++; //add current client to the counter
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
+	printf("Server Recived Massage:\n");
+	printf("%s\n", AcceptedStr);
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
 	int massage_type = get_massage_type(AcceptedStr);
@@ -237,19 +248,34 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	}
 	get_client_name(AcceptedStr, Client_Name);
 	free(AcceptedStr);
-	if (send_massage(SERVER_APPROVED_MSG, t_socket)) {
+	AcceptedStr = NULL;
+	if (number_of_connected_clients > 2) { //Server is Full
+		if (!send_massage(SERVER_DENIED_MSG, t_socket))
+			return 1;
+		printf("Server Send Massage: SERVER_DENIED\n");
+		free(AcceptedStr);
+		closesocket(*t_socket);
+		return 0;
+	}
+
+	if (!send_massage(SERVER_APPROVED_MSG, t_socket)) {
 		//TBD: ERROR OCCUR
 		return 1;
 	}
+	printf("Server Send Massage: SERVER_APPROVED\n");
+
 server_main_menu:
-	if (send_massage(SERVER_MAIN_MENU_MSG, t_socket)) {
+	if (!send_massage(SERVER_MAIN_MENU_MSG, t_socket)) {
 		//TBD: ERROR OCCUR
 		return 1;
 	}
+	printf("Server Send Massage:SERVER_MAIN_MENU\n");
 	//TBD: here we have to wait forever until user decide in client side
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
+	printf("Server Recived Massage:\n");
+	printf("%s\n", AcceptedStr);
 	massage_type = get_massage_type(AcceptedStr);
 	if (massage_type == CLIENT_DISCONNECT) {
 		//TBD: close the thread, maybe do more? 
@@ -262,57 +288,54 @@ server_main_menu:
 		return 0;
 		//TBD: terminate program.. this is for debug purpose anyway
 	}
+
 	/*Client Versus Massage type:*/
 	/* critical code section */
-	write_lock(p_lock);
-	HANDLE Thread_connection_file = CreateFileA(
-		"GameSession.txt",
-		GENERIC_READ | GENERIC_WRITE, //Open file with write read
-		FILE_SHARE_READ | FILE_SHARE_WRITE, //the file should be shared by the threads.
-		NULL, //default security mode
-		OPEN_ALWAYS, //try to create it. if alrady opened - there's a player waiting, else: this thread is first player
-		FILE_ATTRIBUTE_NORMAL, //normal attribute
-		NULL);//not relevant for open file operations.
-	DWORD ret_val = get_file_orig_size(Thread_connection_file);
-	if (NULL == ret_val) {
-		//TBD: error occur, should close everything and die
-		printf("error occur\n");
-	}
-	if (ret_val == 0 || am_i_first == 1) { //this is the first thread - since the size of the file is still zero (bytes)
-		write_to_file(Thread_connection_file,Client_Name);
-		am_i_first = 1; //this is the first one, and this parameter is uniqe for that thread. 
-		//fisrtMutex should be occupied by the second thread, until he finish to write
-		wait_code = WaitForSingleObject(fisrtMutex, TIMEOUT_30SEC /*TBD: CHECK TIMES!!!!!!!*/ );
-		if (WAIT_OBJECT_0 != wait_code)
-		{
-			printf("The second client did not connect in 30 times.\n");
-			if (send_massage(SERVER_NO_OPPONENTS_MSG, t_socket)) {
-				//TBD: ERROR OCCUR
-				return 1;
-			}
-			goto server_main_menu; //all over again 
-		}
-		//HERE THERE IS 2 CLIENT CONNECTED!
-		if (send_massage(SERVER_SETUP_REQUEST_MSG, t_socket)) {
+
+	int writing_return_val = write_client_name_to_game_file(&am_i_first, Client_Name, strlen(Client_Name));
+	if (writing_return_val == SERVER_NO_OPPONENTS) {
+		if (!send_massage(SERVER_NO_OPPONENTS_MSG, t_socket)) {
 			//TBD: ERROR OCCUR
 			return 1;
 		}
-
+		if (!send_massage(SERVER_MAIN_MENU_MSG, t_socket)) {
+			//TBD: ERROR OCCUR
+			return 1;
+			//TBD:go back to main manu
+		}
+		/*Here we should have 2 connected opponets,
+		and am_i_first is equal to 1 only for the first client. this order should be saved
+		*/
+		read_file_get_opponent_user_name(am_i_first, Oponent_Client_Name, strlen(Client_Name));
+		concatenate_str_for_msg(SERVER_INVITE_MSG, Oponent_Client_Name, SendStr);
+		if (!send_massage(SendStr, t_socket)) {
+			//TBD: ERROR OCCUR
+			return 1;
+		}
+		printf("Server sending SERVER_INVITE_MSG massage:\n");
+		printf("%s", SendStr);
+		if (!send_massage(SERVER_SETUP_REQUEST_MSG, t_socket)) {
+			//TBD: ERROR OCCUR
+			return 1;
+		}
+		printf("Server sending SERVER_SETUP_REQUEST_MSG massage:\n");
+		free(AcceptedStr);
+		AcceptedStr = NULL;
 		RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 		if (check_transaction_return_value(RecvRes, t_socket))
 			return 1;
 		int secret_number = get_4digit_number_from_massage(AcceptedStr);
 		free(AcceptedStr);
-			
+
 		//TBD: HERE WE HAVE TO WAIT FOR BOTH CLIENT SENDS THEIR NUMBER
 		//TBD: HERE WE HAVE TO WRITE IT TO THE FILE
-	
-		if (send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
+		/*if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
 			//TBD: ERROR OCCUR
 			return 1;
 		}
 
-
+		free(AcceptedStr);
+		AcceptedStr = NULL;
 		RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 		if (check_transaction_return_value(RecvRes, t_socket))
 			return 1;
@@ -326,14 +349,114 @@ server_main_menu:
 		int guess = get_4digit_number_from_massage(AcceptedStr);
 		//TBD: call to function that calculate the result massage
 		//Here we send the secret number and the guess of the first client
-		char string [MAX_WRITE_BYTES_TO_GAME_FILE];
+		char string[MAX_WRITE_BYTES_TO_GAME_FILE];
 		char temp_num[5];
 		strcpy_s(string, _countof(string), "Client1 secret number:");
 		//itoa(secret_number,temp_num,
 		strcat_s(string, _countof(string), temp_num);
 		strcat_s(string, _countof(string), "and ");
 		strcat_s(string, _countof(string), "strcat_s!");
+	}*/
+	}
+}
 
+int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client_name_length) {
+	//am_i_first will be 1 only for the first client connected to the server.
+
+	/*  CRITICAL Section: */
+	write_lock(p_lock);
+	HANDLE Thread_connection_file = CreateFileA(
+		"GameSession.txt",
+		GENERIC_READ | GENERIC_WRITE, //Open file with write read
+		FILE_SHARE_READ | FILE_SHARE_WRITE, //the file should be shared by the threads.
+		NULL, //default security mode
+		OPEN_ALWAYS, 
+		FILE_ATTRIBUTE_NORMAL, //normal attribute
+		NULL);
+	if (Thread_connection_file == INVALID_HANDLE_VALUE) {
+		printf("ERROR opening the game file withing write_client_name_to_game_file function\n");
+		//TBD: DEAL WITH IT
+	}
+	DWORD ret_val = get_file_orig_size(Thread_connection_file);
+	if (NULL == ret_val) {
+		//TBD: error occur, should close everything and die
+		printf("error within write_client_name_to_game_file function\n");
+	}
+
+	if (ret_val == 0) { //This is the first player! 
+		*am_i_first = 1; //Indicates to the thread that it is first
+		write_to_file(Thread_connection_file, Client_Name);
+	}
+	else { //This is the second thread!
+		DWORD dwPtrLow = SetFilePointer(Thread_connection_file,	NULL,	NULL,FILE_END);
+		write_to_file(Thread_connection_file, Client_Name);
+	}
+	if (!CloseHandle(Thread_connection_file))
+		printf("Error while close file handle within write_client_name_to_game_file function\n"); //No need to close everything here - the game should continue
+	write_release(p_lock);
+
+	if (am_i_first == 1) {
+		//Wait until second thread will write his name to the file! 
+		//using semaphore gun for this.
+		printf("First Client,name: %s, waiting for second client", Client_Name);
+		DWORD wait_for_semaphore = WaitForSingleObject(semaphore_gun, TIMEOUT);
+		if (wait_for_semaphore == WAIT_TIMEOUT)
+		{
+			printf("Timeout has been reached within write_client_name_to_game_file function for the semaphore\n");
+			return SERVER_NO_OPPONENTS; //TBD: The Caller check it and send this massage to the client! 
+		}
+		else if (wait_for_semaphore == WAIT_OBJECT_0) {
+			printf("First Client free! second thread realese me!\n");
+		}
+	}
+	else { //This is the second Client
+		if (!ReleaseSemaphore(semaphore_gun, 1, NULL)) {
+			printf("Error: can't release the semphore gun within write_client_name_to_game_file function\n");
+			//TBD: close program..
+		}
+		printf("Second Thread released the semphore\n");
+	}
+	return 0;
+}
+
+void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name, int my_user_name_size) {
+	HANDLE Thread_connection_file = CreateFileA(
+		"GameSession.txt",
+		GENERIC_READ | GENERIC_WRITE, //Open file with write read
+		FILE_SHARE_READ | FILE_SHARE_WRITE, //the file should be shared by the threads.
+		NULL, //default security mode
+		OPEN_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL, //normal attribute
+		NULL);
+	int first_byte_position, last_byte_position, len;
+	if (Thread_connection_file == INVALID_HANDLE_VALUE) {
+		printf("ERROR opening the game file read_file_get_opponent_user_namee function\n");
+		//TBD: deal with error
+	}
+	DWORD size_of_file = get_file_orig_size(Thread_connection_file);
+	if (am_i_first == 1) {
+		first_byte_position = my_user_name_size;
+		last_byte_position = size_of_file;
+		printf("read_file_get_opponent_user_name function:\n First Client! first_byte_position - %d, last_byte_position - %d\n", first_byte_position, last_byte_position);
+	}
+	else {
+		first_byte_position = 0;
+		last_byte_position = size_of_file - my_user_name_size;
+		printf("read_file_get_opponent_user_name function:\n Second Client! first_byte_position - %d, last_byte_position - %d\n", first_byte_position, last_byte_position);
+	}
+
+	char file_str_name_contents[SEND_STR_SIZE];
+	read_from_file(Thread_connection_file, file_str_name_contents); 
+	int j = 0;
+	for (int i = 0 ; i < (last_byte_position - first_byte_position); i++) {
+		Oponent_Client_Name[j] = file_str_name_contents[i];
+		j++;
+	}
+	Oponent_Client_Name[j] = '\0';
+	
+	if (!CloseHandle(Thread_connection_file)) {
+		printf("Can't close the thread within read_file_get_opponent_user_name function\n");
+		//TBD: ...
 	}
 }
 

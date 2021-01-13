@@ -22,7 +22,7 @@ TransferResult_t ReceiveBuffer( char* OutputBuffer, int RemainingBytesToReceive,
 
 TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd );
 
-int receive_msg(SOCKET socket, char* AcceptedStr);
+char* receive_msg(SOCKET socket, char* AcceptedStr, int* massage_type);
 
 void concatenate_str_for_msg(char* massage_type, char* parameter, char* SendStr);
 

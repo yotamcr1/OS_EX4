@@ -17,6 +17,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	char SendStr[SEND_STR_SIZE];
 	char Massage_type_str[MAX_MASSAGE_TYPE];
 	char* AcceptedStr = NULL;
+	int massage_type;
 	//Call WSAStartup and check for errors.
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR) {
@@ -47,6 +48,8 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 
 	//send the client name to the server:
 	concatenate_str_for_msg(CLIENT_REQUEST_MSG, username,SendStr);
+	printf("Client sending Client_Request massage:\n");
+	printf("%s",SendStr);
 	if ((SendString(SendStr, m_socket)) == TRNS_FAILED)// send client user name to the server
 	{
 		printf("error while sending username to server\n");
@@ -56,23 +59,28 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	/*TBD: use setsocket for getting answer from the server
 	if there is no answer from server: handle_connection_problems(clientService,serverport,serverIP_Address,0);
 	*/
-	int massage_type = receive_msg(m_socket, AcceptedStr);
+	AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
+	printf("Client Recived Massage:\n");
+	printf("%s", AcceptedStr);
 	if (massage_type == SERVER_DENIED) {
 		handle_connection_problems(clientService, serverport, serverIP_Address,1);
 	}
 	free(AcceptedStr);
 	AcceptedStr = NULL;
 	if (massage_type == SERVER_APPROVED) {
-		massage_type = receive_msg(m_socket, AcceptedStr);
+		AcceptedStr = receive_msg(m_socket, AcceptedStr,&massage_type);
+		printf("Client Recived Massage:\n");
+		printf("%s", AcceptedStr);
 		while ((massage_type == SERVER_MAIN_MENU)||(massage_type==SERVER_NO_OPPONENTS)) {
-			printf("Choose what to do next:\n 1. Play against another client\n2. Quit\n");
+			printf("Choose what to do next:\n1. Play against another client\n2. Quit\n");
 			scanf_s("%d", &answer_num);
 			if (answer_num == 1) {
-				if ((SendString(CLIENT_VERSUS_MSG, m_socket)) == TRNS_FAILED)
-				{
+				if ((SendString(CLIENT_VERSUS_MSG, m_socket)) == TRNS_FAILED){
 					printf("error while sending CLIENT_VERSUS_MSG to server\n");
 					return 0x555;
 				}
+				printf("Client sending CLIENT_VERSUS massage:\n");
+
 			}
 			else {//send to server client disconnect and exit
 				if ((SendString(CLIENT_DISCONNECT_MSG, m_socket)) == TRNS_FAILED)
@@ -88,14 +96,14 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 			}
 			free(AcceptedStr);
 			AcceptedStr = NULL;
-			massage_type = receive_msg(m_socket, AcceptedStr);
+			AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 			//TBD: have to wait 30 seconds for answer- HOW?
 			if (massage_type == SERVER_INVITE) {
 				printf("Game is on!\n");
 				game_routine(m_socket);
 				free(AcceptedStr);
 				AcceptedStr = NULL;
-				massage_type = receive_msg(m_socket, AcceptedStr);
+				AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 			}
 			//else: massage_type= SERVER_NO_OPPONENTS then show MAIN_MENU again!
 			//TBD: is the loop condition is OK for another game???
@@ -120,7 +128,8 @@ void game_routine(SOCKET m_socket) {
 	char opponent_guess[5], opponent_number[5];
 	char opponent_username[MAX_USER_NAME];
 	char winner_name[MAX_USER_NAME];
-	int massage_type = receive_msg(m_socket,AcceptedStr);
+	int massage_type;
+	AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 	TransferResult_t SendRes;
 	if (massage_type == SERVER_SETUP_REQUEST) {
 		printf("Choose your 4 digits:\n");
@@ -133,7 +142,7 @@ void game_routine(SOCKET m_socket) {
 		}
 		free(AcceptedStr);
 		AcceptedStr = NULL;
-		massage_type = receive_msg(m_socket, AcceptedStr);
+		AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 		while (massage_type == SERVER_PLAYER_MOVE_REQUEST) {
 			printf("Choose your guess:\n");
 			gets_s(client_Guess, sizeof(client_Guess)); //Reading a string of the client guess from the keyboard

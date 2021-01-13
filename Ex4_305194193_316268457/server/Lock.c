@@ -84,7 +84,6 @@ void read_lock(lock* lock) {
 		printf("Error when releasing mutex\n");
 		return NULL;
 	}
-	return;
 }
 
 void read_release(lock* lock) {
