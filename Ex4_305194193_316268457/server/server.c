@@ -470,50 +470,6 @@ int get_4digit_number_from_massage(char* str) {
 	return number;
 }
 
-void game_first_client(SOCKET* t_socket, HANDLE game_file, char* client_name) {
-
-	char SendStr[SEND_STR_SIZE];
-	TransferResult_t SendRes;
-	TransferResult_t RecvRes;
-	char* AcceptedStr = NULL;
-	char Massage_type_str[MAX_MASSAGE_TYPE];
-	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
-	if (check_transaction_return_value(RecvRes, t_socket))
-		return 1;
-	int massage_type = get_massage_type(AcceptedStr);
-	get_str_of_massage_type(massage_type, Massage_type_str);
-	if (massage_type != CLIENT_SETUP) {
-		printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
-		//TBD: deal with incorrect massages
-		//this is coding falut!!
-	}
-	int secret_number = get_4digit_number_from_massage(AcceptedStr);
-	strcpy_s(SendStr, SEND_STR_SIZE, "SERVER_PLAYER_MOVE_REQUEST\n");
-	SendRes = SendString(SendStr, *t_socket);
-	if (SendRes == TRNS_FAILED) {
-		printf("Service socket error while writing, closing thread.\n");
-		closesocket(*t_socket);
-		return 1;
-	}
-	free(AcceptedStr);
-	//TBD: call to function that calculate the result massage
-	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
-	if (check_transaction_return_value(RecvRes, t_socket))
-		return 1;
-	massage_type = get_massage_type(AcceptedStr);
-	get_str_of_massage_type(massage_type, Massage_type_str);
-	if (massage_type != CLIENT_PLAYER_MOVE) {
-		printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
-		//TBD: deal with incorrect massages
-		//this is coding falut!!
-	}
-	int guess = get_4digit_number_from_massage(AcceptedStr);
-	
-	
-}
-
-
-
 /// <summary>
 /// 
 /// </summary>
