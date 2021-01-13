@@ -207,8 +207,9 @@ int send_massage(char* str,SOCKET* t_socket) {
 	{
 		printf("Service socket error while writing, closing thread.\n");
 		closesocket(*t_socket);
-		return 1;
+		return 0; //Error Occured
 	}
+	return 1; //Success
 }
 
 static DWORD ServiceThread(SOCKET* t_socket) {
@@ -219,6 +220,7 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	TransferResult_t SendRes, RecvRes;
 	char* AcceptedStr = NULL;
 	char Client_Name[MAX_USER_NAME];
+	char Oponent_Client_Name[MAX_USER_NAME];
 	char Massage_type_str[MAX_MASSAGE_TYPE];
 	DWORD last_error;
 	int am_i_first = 0;

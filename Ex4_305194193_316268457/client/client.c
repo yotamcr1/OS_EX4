@@ -14,6 +14,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	int answer_num;
 	// Initialize Winsock.
 	WSADATA wsaData; //Create a WSADATA object called wsaData.
+	char SendStr[SEND_STR_SIZE];
 	char Massage_type_str[MAX_MASSAGE_TYPE];
 	char* AcceptedStr = NULL;
 	//Call WSAStartup and check for errors.
@@ -45,7 +46,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	printf("Connected to server on %lu:%d\n", serverIP_Address, serverport);//connected successfully
 
 	//send the client name to the server:
-	char* SendStr = concatenate_str_for_msg(CLIENT_REQUEST_MSG, username);
+	concatenate_str_for_msg(CLIENT_REQUEST_MSG, username,SendStr);
 	if ((SendString(SendStr, m_socket)) == TRNS_FAILED)// send client user name to the server
 	{
 		printf("error while sending username to server\n");
@@ -55,12 +56,14 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	/*TBD: use setsocket for getting answer from the server
 	if there is no answer from server: handle_connection_problems(clientService,serverport,serverIP_Address,0);
 	*/
-	int massage_type = receive_msg(m_socket);
+	int massage_type = receive_msg(m_socket, AcceptedStr);
 	if (massage_type == SERVER_DENIED) {
 		handle_connection_problems(clientService, serverport, serverIP_Address,1);
 	}
+	free(AcceptedStr);
+	AcceptedStr = NULL;
 	if (massage_type == SERVER_APPROVED) {
-		massage_type = receive_msg(m_socket);
+		massage_type = receive_msg(m_socket, AcceptedStr);
 		while ((massage_type == SERVER_MAIN_MENU)||(massage_type==SERVER_NO_OPPONENTS)) {
 			printf("Choose what to do next:\n 1. Play against another client\n2. Quit\n");
 			scanf_s("%d", &answer_num);
@@ -83,12 +86,16 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 					printf("closesocket function failed with error: %ld\n", WSAGetLastError());
 				exit(1);//TBD: call to gracefull shutdown function for client
 			}
-			massage_type = receive_msg(m_socket);
+			free(AcceptedStr);
+			AcceptedStr = NULL;
+			massage_type = receive_msg(m_socket, AcceptedStr);
 			//TBD: have to wait 30 seconds for answer- HOW?
 			if (massage_type == SERVER_INVITE) {
 				printf("Game is on!\n");
 				game_routine(m_socket);
-				massage_type = receive_msg(m_socket);
+				free(AcceptedStr);
+				AcceptedStr = NULL;
+				massage_type = receive_msg(m_socket, AcceptedStr);
 			}
 			//else: massage_type= SERVER_NO_OPPONENTS then show MAIN_MENU again!
 			//TBD: is the loop condition is OK for another game???
@@ -104,41 +111,49 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 
 
 void game_routine(SOCKET m_socket) {
-	int massage_type = receive_msg(m_socket);
 	char client_Numbers[5];
 	char client_Guess[5];
-	int AcceptedStr, RecvRes;
+	int RecvRes;
+	char SendStr[SEND_STR_SIZE];
+	char* AcceptedStr = NULL;
 	char Bulls[2], Cows[2];
 	char opponent_guess[5], opponent_number[5];
 	char opponent_username[MAX_USER_NAME];
 	char winner_name[MAX_USER_NAME];
+	int massage_type = receive_msg(m_socket,AcceptedStr);
 	TransferResult_t SendRes;
 	if (massage_type == SERVER_SETUP_REQUEST) {
 		printf("Choose your 4 digits:\n");
 		gets_s(client_Numbers, sizeof(client_Numbers)); //Reading a string of the client chosen numbers from the keyboard
-		char* SendStr = concatenate_str_for_msg(CLIENT_SETUP, client_Numbers);
+		concatenate_str_for_msg(CLIENT_SETUP, client_Numbers,SendStr);
 		SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234
 		if (SendRes == TRNS_FAILED){
 			printf("Socket error while trying to write data to socket\n");
 			return 0x555;
 		}
-		massage_type = receive_msg(m_socket);
+		free(AcceptedStr);
+		AcceptedStr = NULL;
+		massage_type = receive_msg(m_socket, AcceptedStr);
 		while (massage_type == SERVER_PLAYER_MOVE_REQUEST) {
 			printf("Choose your guess:\n");
 			gets_s(client_Guess, sizeof(client_Guess)); //Reading a string of the client guess from the keyboard
 			memset(SendStr, 0, sizeof(SendStr));// rest the SendStr
-			SendStr = concatenate_str_for_msg(CLIENT_PLAYER_MOVE, client_Guess);
+			concatenate_str_for_msg(CLIENT_PLAYER_MOVE, client_Guess,SendStr);
 			SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234
 			if (SendRes == TRNS_FAILED)
 			{
 				printf("Socket error while trying to write data to socket\n");
 				return 0x555;
 			}
+			free(AcceptedStr);
+			AcceptedStr = NULL;
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			if (check_transaction_return_value(RecvRes, &m_socket))
 				return 1;//TBD: is it OK?
 			extract_game_results(AcceptedStr, Bulls, Cows, opponent_username, opponent_guess);
 			printf("Bulls: %s\n Cows: %s\n %s played: %s\n", Bulls, Cows, opponent_username, opponent_guess);
+			free(AcceptedStr);
+			AcceptedStr = NULL;
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			/*if (check_transaction_return_value(RecvRes, m_socket))
 			return 1;*/ //TBD: check RecvRes 

@@ -12,40 +12,40 @@ int get_massage_type(const char* str) {
 	for (i = 0; i < MAX_MASSAGE_TYPE; i++) {
 		if ((str[i] != ':') && (str[i] != '\n')) { //end of massage or end of massage type reached. 
 			temp_str[i] = str[i];
-			break;
 		}
+		else break;
 	}
-	temp_str[i + 1] = '\0';
-
-	if (strcmp(temp_str, "CLIENT_REQUEST"))
+	temp_str[i] = '\0';
+	//strcmp return zero on identical values!!!!!
+	if (!strcmp(temp_str, "CLIENT_REQUEST"))
 		return CLIENT_REQUEST;
-	if (strcmp(temp_str, "CLIENT_VERSUS"))
+	if (!strcmp(temp_str, "CLIENT_VERSUS"))
 		return CLIENT_VERSUS;
-	if (strcmp(temp_str, "CLIENT_PLAYER_MOVE"))
+	if (!strcmp(temp_str, "CLIENT_PLAYER_MOVE"))
 		return CLIENT_PLAYER_MOVE;
-	if (strcmp(temp_str, "CLIENT_DISCONNECT"))
+	if (!strcmp(temp_str, "CLIENT_DISCONNECT"))
 		return CLIENT_DISCONNECT;
-	if (strcmp(temp_str, "SERVER_MAIN_MENU"))
+	if (!strcmp(temp_str, "SERVER_MAIN_MENU"))
 		return SERVER_MAIN_MENU;
-	if (strcmp(temp_str, "SERVER_APPROVED"))
+	if (!strcmp(temp_str, "SERVER_APPROVED"))
 		return SERVER_APPROVED;
-	if (strcmp(temp_str, "SERVER_DENIED"))
+	if (!strcmp(temp_str, "SERVER_DENIED"))
 		return SERVER_DENIED;
-	if (strcmp(temp_str, "SERVER_INVITE"))
+	if (!strcmp(temp_str, "SERVER_INVITE"))
 		return SERVER_INVITE;
-	if (strcmp(temp_str, "SERVER_SETUP_REQUSET"))
+	if (!strcmp(temp_str, "SERVER_SETUP_REQUSET"))
 		return SERVER_SETUP_REQUEST;
-	if (strcmp(temp_str, "SERVER_PLAYER_MOVE_REQUEST"))
+	if (!strcmp(temp_str, "SERVER_PLAYER_MOVE_REQUEST"))
 		return SERVER_PLAYER_MOVE_REQUEST;
-	if (strcmp(temp_str, "SERVER_GAME_RESULTS"))
+	if (!strcmp(temp_str, "SERVER_GAME_RESULTS"))
 		return SERVER_GAME_RESULTS;
-	if (strcmp(temp_str, "SERVER_WIN"))
+	if (!strcmp(temp_str, "SERVER_WIN"))
 		return SERVER_WIN;
-	if (strcmp(temp_str, "SERVER_DRAW"))
+	if (!strcmp(temp_str, "SERVER_DRAW"))
 		return SERVER_DRAW;
-	if (strcmp(temp_str, "SERVER_NO_OPPONENTS"))
+	if (!strcmp(temp_str, "SERVER_NO_OPPONENTS"))
 		return SERVER_NO_OPPONENTS;
-	if (strcmp(temp_str, "SERVER_OPPONENT_QUIT"))
+	if (!strcmp(temp_str, "SERVER_OPPONENT_QUIT"))
 		return SERVER_OPPONENT_QUIT;
 
 	return INVALID_MASSAGE_TYPE;
@@ -87,7 +87,7 @@ int get_str_of_massage_type(int type,char* destination) {
 	if (type == SERVER_WIN)
 		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_WIN");
 
-	if (!ret_val) {
+	if (ret_val) { //strcpy_s return zero on success! 
 		printf("strcpy_s failed within get_str_of_massage_type function.\n");
 		return 1;
 	}
@@ -220,22 +220,23 @@ TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd )
 
 
 //the function treat recieve massage and return the massage type
-int receive_msg(SOCKET socket) {
-	int AcceptedStr, RecvRes;
+//if the function success, AcceptedStr is dynamic allocated and should be free!
+int receive_msg(SOCKET socket,char* AcceptedStr) {
+	TransferResult_t RecvRes;
 	RecvRes = ReceiveString(&AcceptedStr, socket); 
 	if (check_transaction_return_value(RecvRes, &socket))
 		return 1; //TBD: is it OK?
 	int massage_type = get_massage_type(AcceptedStr);
-	free(AcceptedStr);//AcceptedStr is dynamic allocated, and should be free
+	//free(AcceptedStr);//AcceptedStr is dynamic allocated, and should be free
 	return massage_type;
 }
 
-char* concatenate_str_for_msg(char* massage_type, char* parameter) {
-	char SendStr[SEND_STR_SIZE];
+void concatenate_str_for_msg(char* massage_type, char* parameter,char* SendStr) {
+	//char SendStr[SEND_STR_SIZE];
 	strcpy_s(SendStr, SEND_STR_SIZE * sizeof(char), massage_type);
 	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), parameter);
 	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), "\n");
-	return SendStr;
+	//return SendStr;
 }
 
 
