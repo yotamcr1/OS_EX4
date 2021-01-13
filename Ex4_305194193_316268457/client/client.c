@@ -9,7 +9,7 @@ SOCKET m_socket;
 //TBD: I THINK THE CLIENT LOGIC ITS OK NOW, WE JUST HAVE TO HANDLE GRACEFULL DISCONNECTING :)
 
 void ClientMain(char* username, int serverport, unsigned long serverIP_Address) {
-	printf("welcom to ClientMain\n");
+	printf("welcom to ClientMain \n");
 	SOCKADDR_IN clientService;
 	int answer_num;
 	// Initialize Winsock.

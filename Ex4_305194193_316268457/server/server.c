@@ -9,12 +9,12 @@ int number_of_connected_clients = 0;
 HANDLE semaphore_gun = NULL;
 int reader_count = 0;
 
-void write_to_file(HANDLE file, char* str) {
+void write_to_file(HANDLE file,const char* str) {
 
 	DWORD dwBytesWrite = 0;
 	//write_lock(p_lock);
 	//TBD: write operation
-	if (!WriteFile(file, str, MAX_WRITE_BYTES_TO_GAME_FILE, &dwBytesWrite, NULL)) {
+	if (!WriteFile(file, str, strlen(str), &dwBytesWrite, NULL)) {
 		printf("error while trying to write into the output file. exit\n");
 		//TBD: close everything
 	}
@@ -25,7 +25,7 @@ void read_from_file(HANDLE file, char* str) {
 	//read_lock(p_lock);
 	DWORD dwBytesRead = 0;
 	//TBD: read opreation
-	if (!ReadFile(file, str, 100, &dwBytesRead, NULL))
+	if (!ReadFile(file, str, 45, &dwBytesRead, NULL))
 		//printf("%s", GetLastError());
 		//read_release(p_lock);
 		printf("Error occoured within read_from_file function\n");
@@ -188,8 +188,9 @@ DWORD get_file_orig_size(HANDLE file) {
 	);
 	if (size == INVALID_FILE_SIZE) {
 		printf("can't calculate origianl size file. exit\n");
-		return NULL;
+		return -1;
 	}
+	return size;
 }
 
 
@@ -320,6 +321,9 @@ server_main_menu:
 		//TBD: ERROR OCCUR
 		return 1;
 	}
+	free(AcceptedStr);
+	AcceptedStr = NULL;
+	//CHECK FROM NOW!!!
 	printf("Server sending SERVER_SETUP_REQUEST_MSG massage:\n");
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
@@ -363,7 +367,6 @@ server_main_menu:
 
 int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client_name_length) {
 	//am_i_first will be 1 only for the first client connected to the server.
-
 	/*  CRITICAL Section: */
 	write_lock(p_lock);
 	HANDLE Thread_connection_file = CreateFileA(
@@ -379,7 +382,7 @@ int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client
 		//TBD: DEAL WITH IT
 	}
 	DWORD ret_val = get_file_orig_size(Thread_connection_file);
-	if (NULL == ret_val) {
+	if (-1 == ret_val) {
 		//TBD: error occur, should close everything and die
 		printf("error within write_client_name_to_game_file function\n");
 	}
@@ -396,7 +399,7 @@ int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client
 		printf("Error while close file handle within write_client_name_to_game_file function\n"); //No need to close everything here - the game should continue
 	write_release(p_lock);
 
-	if (am_i_first == 1) {
+	if (*am_i_first == 1) {
 		//Wait until second thread will write his name to the file! 
 		//using semaphore gun for this.
 		printf("First Client,name: %s, waiting for second client", Client_Name);
@@ -462,7 +465,9 @@ void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name,
 		//TBD: ...
 	}
 	if (reader_count==2){
-		DeleteFile("GameSession.txt");
+		if (DeleteFile("GameSession.txt") == 0) {
+			printf("didnt delete file within read_file_get_opponent_name\n");
+		}
 	}
 }
 
