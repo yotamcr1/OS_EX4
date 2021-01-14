@@ -259,7 +259,6 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 		closesocket(*t_socket);
 		return 0;
 	}
-
 	if (!send_massage(SERVER_APPROVED_MSG, t_socket)) {
 		//TBD: ERROR OCCUR
 		return 1;
@@ -324,26 +323,30 @@ server_main_menu:
 	}
 	free(AcceptedStr);
 	AcceptedStr = NULL;
-	//CHECK FROM NOW!!!
 	printf("Server sending SERVER_SETUP_REQUEST_MSG massage:\n");
 	//here server should recieve client setup massage!
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
+	printf("Server Recived Massage:\n");
+	printf("%s\n", AcceptedStr);
 	int secret_number = get_4digit_number_from_massage(AcceptedStr);
 	free(AcceptedStr);
 	AcceptedStr = NULL;
 	//TBD: HERE WE HAVE TO WAIT FOR BOTH CLIENT SENDS THEIR NUMBER
-		//TBD: HERE WE HAVE TO WRITE IT TO THE FILE
+	//TBD: HERE WE HAVE TO WRITE IT TO THE FILE
 	if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
 		//TBD: ERROR OCCUR
 		return 1;
 	}
+	printf("Server sending SERVER_PLAYER_MOVE_REQUEST_MSG massage:\n");
 	free(AcceptedStr);
 	AcceptedStr = NULL;
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
+	printf("Server Recived Massage:\n");
+	printf("%s\n", AcceptedStr);
 	massage_type = get_massage_type(AcceptedStr);
 	get_str_of_massage_type(massage_type, Massage_type_str);
 	if (massage_type != CLIENT_PLAYER_MOVE) {
@@ -478,7 +481,7 @@ int get_4digit_number_from_massage(char* str) {
 	while (str[i] != ':') //this is the delimeter. after the char ':', the next 4 chars will be the digits. 
 		i++;
 	i++;
-	char str_num[5] = { str[i + 3], str[i + 2],str[i + 1],str[i], '\0' };
+	char str_num[5] = { str[i], str[i + 1],str[i + 2],str[i + 3], '\0' };
 	int number = atoi(str_num);
 	return number;
 }

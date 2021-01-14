@@ -132,6 +132,8 @@ void game_routine(SOCKET m_socket) {
 	int massage_type;
 	AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 	TransferResult_t SendRes;
+	printf("Client Recived Massage within game_routine:\n");
+	printf("%s\n", AcceptedStr);
 	if (massage_type == SERVER_SETUP_REQUEST) {
 		printf("Choose your 4 digits:\n");
 		//gets_s(client_Numbers, sizeof(client_Numbers)); //Reading a string of the client chosen numbers from the keyboard
@@ -145,9 +147,13 @@ void game_routine(SOCKET m_socket) {
 			printf("Socket error while trying to write data to socket\n");
 			return 0x555;
 		}
+		printf("Client Send Massage within game_routine:\n");
+		printf("%s\n", SendStr);
 		free(AcceptedStr);
 		AcceptedStr = NULL;
 		AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
+		printf("Client Recived Massage within game_routine:\n");
+		printf("%s\n", AcceptedStr);
 		while (massage_type == SERVER_PLAYER_MOVE_REQUEST) {
 			printf("Choose your guess:\n");
 		//	gets_s(client_Guess, sizeof(client_Guess)); //Reading a string of the client guess from the keyboard
@@ -163,17 +169,23 @@ void game_routine(SOCKET m_socket) {
 				printf("Socket error while trying to write data to socket\n");
 				return 0x555;
 			}
+			printf("Client Send Massage within game_routine:\n");
+			printf("%s\n", SendStr);
 			free(AcceptedStr);
 			AcceptedStr = NULL;
 			//Chen: Here we got stuck
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			if (check_transaction_return_value(RecvRes, &m_socket))
 				return 1;//TBD: is it OK?
+			printf("Client Recived Massage within game_routine:\n");
+			printf("%s\n", AcceptedStr);
 			extract_game_results(AcceptedStr, Bulls, Cows, opponent_username, opponent_guess);
 			printf("Bulls: %s\n Cows: %s\n %s played: %s\n", Bulls, Cows, opponent_username, opponent_guess);
 			free(AcceptedStr);
 			AcceptedStr = NULL;
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
+			printf("Client Recived Massage within game_routine:\n");
+			printf("%s\n", AcceptedStr);
 			/*if (check_transaction_return_value(RecvRes, m_socket))
 			return 1;*/ //TBD: check RecvRes 
 			massage_type = get_massage_type(AcceptedStr);
