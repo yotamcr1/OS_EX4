@@ -7,14 +7,14 @@ HANDLE Thread_Connection_File[NUM_OF_WORKER_THREADS];
 lock* p_lock = NULL;
 int number_of_connected_clients = 0;
 HANDLE semaphore_gun = NULL;
+int reader_count = 0;
 
-
-void write_to_file(HANDLE file, char* str) {
+void write_to_file(HANDLE file,const char* str) {
 
 	DWORD dwBytesWrite = 0;
 	//write_lock(p_lock);
 	//TBD: write operation
-	if (!WriteFile(file, str, MAX_WRITE_BYTES_TO_GAME_FILE, &dwBytesWrite, NULL)) {
+	if (!WriteFile(file, str, strlen(str), &dwBytesWrite, NULL)) {
 		printf("error while trying to write into the output file. exit\n");
 		//TBD: close everything
 	}
@@ -25,7 +25,8 @@ void read_from_file(HANDLE file, char* str) {
 	//read_lock(p_lock);
 	DWORD dwBytesRead = 0;
 	//TBD: read opreation
-	if (!ReadFile(file, str, MAX_WRITE_BYTES_TO_GAME_FILE, &dwBytesRead, NULL))
+	if (!ReadFile(file, str, 45, &dwBytesRead, NULL))
+		//printf("%s", GetLastError());
 		//read_release(p_lock);
 		printf("Error occoured within read_from_file function\n");
 }
@@ -187,8 +188,9 @@ DWORD get_file_orig_size(HANDLE file) {
 	);
 	if (size == INVALID_FILE_SIZE) {
 		printf("can't calculate origianl size file. exit\n");
-		return NULL;
+		return -1;
 	}
+	return size;
 }
 
 
@@ -304,50 +306,53 @@ server_main_menu:
 			return 1;
 			//TBD:go back to main manu
 		}
-		/*Here we should have 2 connected opponets,
-		and am_i_first is equal to 1 only for the first client. this order should be saved
-		*/
-		read_file_get_opponent_user_name(am_i_first, Oponent_Client_Name, strlen(Client_Name));
-		concatenate_str_for_msg(SERVER_INVITE_MSG, Oponent_Client_Name, SendStr);
-		if (!send_massage(SendStr, t_socket)) {
-			//TBD: ERROR OCCUR
-			return 1;
-		}
-		printf("Server sending SERVER_INVITE_MSG massage:\n");
-		printf("%s", SendStr);
-		if (!send_massage(SERVER_SETUP_REQUEST_MSG, t_socket)) {
-			//TBD: ERROR OCCUR
-			return 1;
-		}
-		printf("Server sending SERVER_SETUP_REQUEST_MSG massage:\n");
-		free(AcceptedStr);
-		AcceptedStr = NULL;
-		RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
-		if (check_transaction_return_value(RecvRes, t_socket))
-			return 1;
-		int secret_number = get_4digit_number_from_massage(AcceptedStr);
-		free(AcceptedStr);
-
-		//TBD: HERE WE HAVE TO WAIT FOR BOTH CLIENT SENDS THEIR NUMBER
+	}
+	/*Here we should have 2 connected opponets,
+	and am_i_first is equal to 1 only for the first client. this order should be saved
+	*/
+	read_file_get_opponent_user_name(am_i_first, Oponent_Client_Name, strlen(Client_Name));
+	concatenate_str_for_msg(SERVER_INVITE_MSG, Oponent_Client_Name, SendStr);
+	if (!send_massage(SendStr, t_socket)) {
+		//TBD: ERROR OCCUR
+		return 1;
+	}
+	printf("Server sending SERVER_INVITE_MSG massage:\n");
+	printf("%s", SendStr);
+	if (!send_massage(SERVER_SETUP_REQUEST_MSG, t_socket)) {
+		//TBD: ERROR OCCUR
+		return 1;
+	}
+	free(AcceptedStr);
+	AcceptedStr = NULL;
+	//CHECK FROM NOW!!!
+	printf("Server sending SERVER_SETUP_REQUEST_MSG massage:\n");
+	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
+	if (check_transaction_return_value(RecvRes, t_socket))
+		return 1;
+	int secret_number = get_4digit_number_from_massage(AcceptedStr);
+	free(AcceptedStr);
+	AcceptedStr = NULL;
+	//TBD: HERE WE HAVE TO WAIT FOR BOTH CLIENT SENDS THEIR NUMBER
 		//TBD: HERE WE HAVE TO WRITE IT TO THE FILE
-		/*if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
-			//TBD: ERROR OCCUR
-			return 1;
-		}
-
-		free(AcceptedStr);
-		AcceptedStr = NULL;
-		RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
-		if (check_transaction_return_value(RecvRes, t_socket))
-			return 1;
-		int massage_type = get_massage_type(AcceptedStr);
-		get_str_of_massage_type(massage_type, Massage_type_str);
-		if (massage_type != CLIENT_PLAYER_MOVE) {
-			printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
-			//TBD: deal with incorrect massages
-			//this is coding falut!!
-		}
-		int guess = get_4digit_number_from_massage(AcceptedStr);
+	if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
+		//TBD: ERROR OCCUR
+		return 1;
+	}
+	free(AcceptedStr);
+	AcceptedStr = NULL;
+	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
+	if (check_transaction_return_value(RecvRes, t_socket))
+		return 1;
+	massage_type = get_massage_type(AcceptedStr);
+	get_str_of_massage_type(massage_type, Massage_type_str);
+	if (massage_type != CLIENT_PLAYER_MOVE) {
+		printf("The Massage should be CLIENT_SETUP, recived %s", Massage_type_str);
+		//TBD: deal with incorrect massages
+		//this is coding falut!!
+	}
+	int guess = get_4digit_number_from_massage(AcceptedStr);
+	//have to write the 4 digit in the file???
+	/*
 		//TBD: call to function that calculate the result massage
 		//Here we send the secret number and the guess of the first client
 		char string[MAX_WRITE_BYTES_TO_GAME_FILE];
@@ -359,13 +364,12 @@ server_main_menu:
 		strcat_s(string, _countof(string), "strcat_s!");
 	}*/
 	}
-}
+
 
 int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client_name_length) {
 	//am_i_first will be 1 only for the first client connected to the server.
-
-	write_lock(p_lock);
 	/*  CRITICAL Section: */
+	write_lock(p_lock);
 	HANDLE Thread_connection_file = CreateFileA(
 		"GameSession.txt",
 		GENERIC_READ | GENERIC_WRITE, //Open file with write read
@@ -379,7 +383,7 @@ int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client
 		//TBD: DEAL WITH IT
 	}
 	DWORD ret_val = get_file_orig_size(Thread_connection_file);
-	if (NULL == ret_val) {
+	if (-1 == ret_val) {
 		//TBD: error occur, should close everything and die
 		printf("error within write_client_name_to_game_file function\n");
 	}
@@ -396,7 +400,7 @@ int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client
 		printf("Error while close file handle within write_client_name_to_game_file function\n"); //No need to close everything here - the game should continue
 	write_release(p_lock);
 
-	if (am_i_first == 1) {
+	if (*am_i_first == 1) {
 		//Wait until second thread will write his name to the file! 
 		//using semaphore gun for this.
 		printf("First Client,name: %s, waiting for second client", Client_Name);
@@ -421,6 +425,7 @@ int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client
 }
 
 void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name, int my_user_name_size) {
+	reader_count++;
 	HANDLE Thread_connection_file = CreateFileA(
 		"GameSession.txt",
 		GENERIC_READ | GENERIC_WRITE, //Open file with write read
@@ -447,6 +452,7 @@ void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name,
 	}
 
 	char file_str_name_contents[SEND_STR_SIZE];
+
 	read_from_file(Thread_connection_file, file_str_name_contents); 
 	int j = 0;
 	for (int i = 0 ; i < (last_byte_position - first_byte_position); i++) {
@@ -458,6 +464,11 @@ void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name,
 	if (!CloseHandle(Thread_connection_file)) {
 		printf("Can't close the thread within read_file_get_opponent_user_name function\n");
 		//TBD: ...
+	}
+	if (reader_count==2){
+		if (DeleteFile("GameSession.txt") == 0) {
+			printf("didnt delete file within read_file_get_opponent_name\n");
+		}
 	}
 }
 
