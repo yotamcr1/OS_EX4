@@ -158,6 +158,8 @@ void game_routine(SOCKET m_socket) {
 			memset(SendStr, 0, sizeof(SendStr));// rest the SendStr
 			concatenate_str_for_msg(CLIENT_PLAYER_MOVE_MSG, client_Guess,SendStr);
 			SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234
+			printf("Client sending CLIENT_PLAYER_MOVE Massage:\n");
+			printf("%s", SendStr);
 			if (SendRes == TRNS_FAILED)
 			{
 				printf("Socket error while trying to write data to socket\n");
@@ -168,16 +170,19 @@ void game_routine(SOCKET m_socket) {
 			//Chen: Here we got stuck
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			if (check_transaction_return_value(RecvRes, &m_socket))
-				return 1;//TBD: is it OK?
-			extract_game_results(AcceptedStr, Bulls, Cows, opponent_username, opponent_guess);
-			printf("Bulls: %s\n Cows: %s\n %s played: %s\n", Bulls, Cows, opponent_username, opponent_guess);
+				return 1;//TBD: is it OK
+			//here we get SERVER_GAME_RESULT FROM SERVER
+			massage_type = get_massage_type(AcceptedStr);
+			if (massage_type == SERVER_GAME_RESULTS) {
+				extract_game_results(AcceptedStr, Bulls, Cows, opponent_username, opponent_guess);
+				printf("Bulls: %s\n Cows: %s\n %s played: %s\n", Bulls, Cows, opponent_username, opponent_guess);
+			}
 			free(AcceptedStr);
 			AcceptedStr = NULL;
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			/*if (check_transaction_return_value(RecvRes, m_socket))
 			return 1;*/ //TBD: check RecvRes 
 			massage_type = get_massage_type(AcceptedStr);
-			//TBD: CONTINUE FROM HERE!!- POINT 11
 		}
 		//if we are here so there is a winner or a tie or opponent quit:
 		if (massage_type == SERVER_OPPONENT_QUIT) {
@@ -187,7 +192,7 @@ void game_routine(SOCKET m_socket) {
 			extract_winner_name_and_opponent_number(AcceptedStr, winner_name, opponent_number);
 			printf("%s won!\n opponents numbers was %s\n", winner_name, opponent_number);
 		}
-		else{
+		if (massage_type == SERVER_DRAW){
 			printf("It's a tie\n");
 		}	
 	}

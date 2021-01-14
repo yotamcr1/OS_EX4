@@ -339,8 +339,7 @@ server_main_menu:
 		//TBD: ERROR OCCUR
 		return 1;
 	}
-	free(AcceptedStr);
-	AcceptedStr = NULL;
+	printf("Server sending SERVER_PLAYER_MOVE_REQUEST_MSG massage:\n");
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
@@ -352,6 +351,7 @@ server_main_menu:
 		//this is coding falut!!
 	}
 	int guess = get_4digit_number_from_massage(AcceptedStr);
+	printf("server recieved massage CLIENT_PLAYER_MOVE with guess: %d \n ", guess);
 	//have to write the 4 digit in the file???
 	/*
 		//TBD: call to function that calculate the result massage
