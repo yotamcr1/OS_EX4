@@ -326,6 +326,7 @@ server_main_menu:
 	AcceptedStr = NULL;
 	//CHECK FROM NOW!!!
 	printf("Server sending SERVER_SETUP_REQUEST_MSG massage:\n");
+	//here server should recieve client setup massage!
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;

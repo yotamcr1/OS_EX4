@@ -33,7 +33,7 @@ int get_massage_type(const char* str) {
 		return SERVER_DENIED;
 	if (!strcmp(temp_str, "SERVER_INVITE"))
 		return SERVER_INVITE;
-	if (!strcmp(temp_str, "SERVER_SETUP_REQUSET"))
+	if (!strcmp(temp_str, "SERVER_SETUP_REQUEST"))
 		return SERVER_SETUP_REQUEST;
 	if (!strcmp(temp_str, "SERVER_PLAYER_MOVE_REQUEST"))
 		return SERVER_PLAYER_MOVE_REQUEST;
@@ -233,9 +233,9 @@ char* receive_msg(SOCKET socket,char* AcceptedStr,int* massage_type) {
 
 void concatenate_str_for_msg(char* massage_type, char* parameter,char* SendStr) {
 	//char SendStr[SEND_STR_SIZE];
-	strcpy_s(SendStr, SEND_STR_SIZE * sizeof(char), massage_type);
-	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), parameter);
-	strcat_s(SendStr, SEND_STR_SIZE * sizeof(char), "\n");
+	strcpy_s(SendStr, strlen(massage_type) * sizeof(char), massage_type);
+	strcat_s(SendStr, strlen(parameter) * sizeof(char), parameter);
+	strcat_s(SendStr, sizeof(char), "\n");
 	//return SendStr;
 }
 

@@ -71,6 +71,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 		AcceptedStr = receive_msg(m_socket, AcceptedStr,&massage_type);
 		printf("Client Recived Massage:\n");
 		printf("%s", AcceptedStr);
+
 		while ((massage_type == SERVER_MAIN_MENU)||(massage_type==SERVER_NO_OPPONENTS)) {
 			printf("Choose what to do next:\n1. Play against another client\n2. Quit\n");
 			scanf_s("%d", &answer_num);
@@ -133,7 +134,11 @@ void game_routine(SOCKET m_socket) {
 	TransferResult_t SendRes;
 	if (massage_type == SERVER_SETUP_REQUEST) {
 		printf("Choose your 4 digits:\n");
-		gets_s(client_Numbers, sizeof(client_Numbers)); //Reading a string of the client chosen numbers from the keyboard
+		//gets_s(client_Numbers, sizeof(client_Numbers)); //Reading a string of the client chosen numbers from the keyboard
+		if (!scanf_s("%4s", client_Numbers, (unsigned)_countof(client_Numbers))) {
+			printf("Error while scaning number from keyboard. exit\n");
+			//TBD: deal with errors
+		}
 		concatenate_str_for_msg(CLIENT_SETUP, client_Numbers,SendStr);
 		SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234
 		if (SendRes == TRNS_FAILED){
@@ -145,7 +150,11 @@ void game_routine(SOCKET m_socket) {
 		AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 		while (massage_type == SERVER_PLAYER_MOVE_REQUEST) {
 			printf("Choose your guess:\n");
-			gets_s(client_Guess, sizeof(client_Guess)); //Reading a string of the client guess from the keyboard
+		//	gets_s(client_Guess, sizeof(client_Guess)); //Reading a string of the client guess from the keyboard
+			if (!scanf_s("%4s", client_Guess, (unsigned)_countof(client_Guess))) {
+				printf("Error while scaning number from keyboard. exit\n");
+				//TBD: deal with errors
+			}
 			memset(SendStr, 0, sizeof(SendStr));// rest the SendStr
 			concatenate_str_for_msg(CLIENT_PLAYER_MOVE, client_Guess,SendStr);
 			SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234

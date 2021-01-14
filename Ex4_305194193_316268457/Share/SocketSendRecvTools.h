@@ -2,6 +2,7 @@
 #define SOCKET_SEND_RECV_TOOLS_H
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
