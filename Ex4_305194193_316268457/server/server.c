@@ -32,7 +32,7 @@ void read_from_file(HANDLE file, char* str) {
 
 
 void initialize_semaphore() {
-	semaphore_gun = CreateSemaphore(NULL, 0, 1, NULL);  
+	semaphore_gun = CreateSemaphoreA(NULL, 0, 1, NULL);  
 	if (NULL == semaphore_gun){
 		printf("Error within initialize sempaphore functionn\n");
 		return 0; //Errror indicates
@@ -279,6 +279,7 @@ server_main_menu:
 	massage_type = get_massage_type(AcceptedStr);
 	if (massage_type == CLIENT_DISCONNECT) {
 		//TBD: close the thread, maybe do more? 
+		number_of_connected_clients--;
 		closesocket(*t_socket);
 		free(AcceptedStr);
 		return 0;
@@ -363,8 +364,8 @@ server_main_menu:
 int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client_name_length) {
 	//am_i_first will be 1 only for the first client connected to the server.
 
-	/*  CRITICAL Section: */
 	write_lock(p_lock);
+	/*  CRITICAL Section: */
 	HANDLE Thread_connection_file = CreateFileA(
 		"GameSession.txt",
 		GENERIC_READ | GENERIC_WRITE, //Open file with write read
@@ -388,7 +389,7 @@ int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client
 		write_to_file(Thread_connection_file, Client_Name);
 	}
 	else { //This is the second thread!
-		DWORD dwPtrLow = SetFilePointer(Thread_connection_file,	NULL,	NULL,FILE_END);
+		DWORD dwPtrLow = SetFilePointer(Thread_connection_file,	NULL,	NULL, FILE_END);
 		write_to_file(Thread_connection_file, Client_Name);
 	}
 	if (!CloseHandle(Thread_connection_file))
