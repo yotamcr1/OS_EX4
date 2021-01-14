@@ -139,7 +139,7 @@ void game_routine(SOCKET m_socket) {
 			printf("Error while scaning number from keyboard. exit\n");
 			//TBD: deal with errors
 		}
-		concatenate_str_for_msg(CLIENT_SETUP, client_Numbers,SendStr);
+		concatenate_str_for_msg(CLIENT_SETUP_MSG, client_Numbers,SendStr);
 		SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234
 		if (SendRes == TRNS_FAILED){
 			printf("Socket error while trying to write data to socket\n");
@@ -156,7 +156,7 @@ void game_routine(SOCKET m_socket) {
 				//TBD: deal with errors
 			}
 			memset(SendStr, 0, sizeof(SendStr));// rest the SendStr
-			concatenate_str_for_msg(CLIENT_PLAYER_MOVE, client_Guess,SendStr);
+			concatenate_str_for_msg(CLIENT_PLAYER_MOVE_MSG, client_Guess,SendStr);
 			SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234
 			if (SendRes == TRNS_FAILED)
 			{
@@ -165,6 +165,7 @@ void game_routine(SOCKET m_socket) {
 			}
 			free(AcceptedStr);
 			AcceptedStr = NULL;
+			//Chen: Here we got stuck
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			if (check_transaction_return_value(RecvRes, &m_socket))
 				return 1;//TBD: is it OK?
