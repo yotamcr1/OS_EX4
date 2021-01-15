@@ -227,16 +227,13 @@ char* receive_msg(SOCKET socket,char* AcceptedStr,int* massage_type) {
 	if (check_transaction_return_value(RecvRes, &socket))
 		return 1; //TBD: is it OK?
 	*massage_type = get_massage_type(AcceptedStr);
-	//return massage_type;
 	return AcceptedStr;
 }
 
 void concatenate_str_for_msg(char* massage_type, char* parameter,char* SendStr) {
-	//char SendStr[SEND_STR_SIZE];
 	strcpy_s(SendStr, (strlen(massage_type) + 1 ) * sizeof(char), massage_type);
 	strcat_s(SendStr, (strlen(massage_type) + strlen(parameter) + 2) * sizeof(char), parameter);
 	strcat_s(SendStr, (strlen(massage_type) + strlen(parameter) + 2) * sizeof(char), "\n");
-	//return SendStr;
 }
 
 
@@ -255,4 +252,11 @@ int check_transaction_return_value(TransferResult_t tr, SOCKET* t_socket) {
 		return 1;
 	}
 	return 0;
+}
+
+//the functions set the timeout for the socket 
+void set_socket_timeout(DWORD timeout, SOCKET socket) {
+	if (setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout))) {
+		printf("ERROR while trying to set the socket timeout within set_socket_timeout\n");
+	}
 }

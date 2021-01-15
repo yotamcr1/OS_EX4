@@ -4,6 +4,7 @@
 #include "client.h"
 #include "SocketSendRecvTools.h"
 
+#define CLIENT_TIMEOUT 300000 //timeout in miliseconds
 SOCKET m_socket;
 
 //TBD: I THINK THE CLIENT LOGIC ITS OK NOW, WE JUST HAVE TO HANDLE GRACEFULL DISCONNECTING :)
@@ -71,7 +72,6 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 		AcceptedStr = receive_msg(m_socket, AcceptedStr,&massage_type);
 		printf("Client Recived Massage:\n");
 		printf("%s", AcceptedStr);
-
 		while ((massage_type == SERVER_MAIN_MENU)||(massage_type==SERVER_NO_OPPONENTS)) {
 			printf("Choose what to do next:\n1. Play against another client\n2. Quit\n");
 			scanf_s("%d", &answer_num);
@@ -81,7 +81,6 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 					return 0x555;
 				}
 				printf("Client sending CLIENT_VERSUS massage:\n");
-
 			}
 			else {//send to server client disconnect and exit
 				if ((SendString(CLIENT_DISCONNECT_MSG, m_socket)) == TRNS_FAILED)
@@ -93,28 +92,29 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 				iResult = closesocket(m_socket);
 				if (iResult == SOCKET_ERROR)
 					printf("closesocket function failed with error: %ld\n", WSAGetLastError());
-				exit(1);//TBD: call to gracefull shutdown function for client
+				//TBD: call to gracefull shutdown function for client
+				gracefull_client_shutdown(m_socket, AcceptedStr);
 			}
 			free(AcceptedStr);
 			AcceptedStr = NULL;
 			AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
+			printf("Client Recived Massage:\n");
+			printf("%s", AcceptedStr);
 			//TBD: have to wait 30 seconds for answer- HOW?
+			//set_socket_timeout(CLIENT_TIMEOUT, m_socket);
+			free(AcceptedStr);
+			AcceptedStr = NULL;
 			if (massage_type == SERVER_INVITE) {
 				printf("Game is on!\n");
 				game_routine(m_socket);
+				AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 				free(AcceptedStr);
 				AcceptedStr = NULL;
-				AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 			}
 			//else: massage_type= SERVER_NO_OPPONENTS then show MAIN_MENU again!
-			//TBD: is the loop condition is OK for another game???
 		}
 	}
-	closesocket(m_socket);//TBD: gracefull shutdown?
-	if (WSACleanup()) {//if wsacleanup failed
-		printf("WSACleanup failed with error code: : %d\n", WSAGetLastError());
-		return 1;
-	}
+	gracefull_client_shutdown(m_socket, AcceptedStr);
 	return;
 }
 
@@ -134,10 +134,9 @@ void game_routine(SOCKET m_socket) {
 	TransferResult_t SendRes;
 	if (massage_type == SERVER_SETUP_REQUEST) {
 		printf("Choose your 4 digits:\n");
-		//gets_s(client_Numbers, sizeof(client_Numbers)); //Reading a string of the client chosen numbers from the keyboard
-		if (!scanf_s("%4s", client_Numbers, (unsigned)_countof(client_Numbers))) {
+		if (!scanf_s("%4s", client_Numbers, (unsigned)_countof(client_Numbers))) {//Reading a string of the client chosen numbers from the keyboard
 			printf("Error while scaning number from keyboard. exit\n");
-			//TBD: deal with errors
+			//TBD: deal with errors- i think we dont have to 
 		}
 		concatenate_str_for_msg(CLIENT_SETUP_MSG, client_Numbers,SendStr);
 		SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234
@@ -284,7 +283,28 @@ void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsig
 	}
 	return;
 }
-/*
-void gracefull_shutdown() {
 
-}*/
+
+
+//for every shutdown we have to gracefully shutdown the client:
+//In a graceful shutdown, any data that has been queued, but not yet transmitted can be sent prior to the connection being closed
+int gracefull_client_shutdown(SOCKET m_socket,char* AcceptedStr) {
+	int RecvRes;
+	shutdown(socket,SD_SEND); //signal end of session and that client has no more data to send
+	RecvRes = ReceiveString(&AcceptedStr, m_socket);
+	if (check_transaction_return_value(RecvRes, &m_socket))
+		return 1;//TBD: is it OK
+	//have to check the recieved massage?
+	closesocket(m_socket);
+	if (WSACleanup()) {//if wsacleanup failed
+		printf("WSACleanup failed with error code: %d\n", WSAGetLastError());
+		return 1;
+	}
+	if (AcceptedStr != NULL) {
+		free(AcceptedStr);
+	}
+	return 0;
+}
+
+
+

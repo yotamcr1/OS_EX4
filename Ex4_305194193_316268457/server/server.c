@@ -514,3 +514,10 @@ void game_calculate_and_update_status(int numA, int numB, int A_guess_B, int B_g
 	printf("A: bulls %d , cows %d\n",num_of_bull_A,num_of_cows_A);
 	printf("B: bulls %d, cows %d\n",num_of_bull_B,num_of_cows_B);
 }
+
+
+/*server gracefull shutdown- first recieve data, then send any remaining data, then shutdown and close socket
+int gracefull_server_shutdown(SOCKET m_socket, char* AcceptedStr) {
+
+}
+*/

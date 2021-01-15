@@ -28,4 +28,5 @@ char* receive_msg(SOCKET socket, char* AcceptedStr, int* massage_type);
 void concatenate_str_for_msg(char* massage_type, char* parameter, char* SendStr);
 
 int check_transaction_return_value(TransferResult_t tr, SOCKET* t_socket);
+void set_socket_timeout(DWORD timeout, SOCKET socket);
 #endif // SOCKET_SEND_RECV_TOOLS_H
