@@ -501,9 +501,7 @@ server_main_menu:
 	
 
 
-
-
-
+	gracefull_server_shutdown(*t_socket, AcceptedStr);
 }
 
 
@@ -722,12 +720,35 @@ void game_calculate_and_update_status(int oponent_secret_number, int my_geuss, i
 }
 
 
-/*server gracefull shutdown- first recieve data, then send any remaining data, then shutdown and close socket
+//server gracefull shutdown- first recieve data, then shutdown and close socket
+///and free all resources- semaphores and locks
 int gracefull_server_shutdown(SOCKET m_socket, char* AcceptedStr) {
-
+	int RecvRes, iResult;
+	RecvRes = ReceiveString(&AcceptedStr, m_socket);
+	if (check_transaction_return_value(RecvRes, &m_socket))
+		return 1;
+	shutdown(m_socket, SD_SEND); //signal end of session and that server has no more data to send
+	iResult = closesocket(m_socket);
+	if (iResult == SOCKET_ERROR)
+		printf("closesocket function failed with error: %ld\n", WSAGetLastError());
+	if (WSACleanup()) {//if wsacleanup failed
+		printf("WSACleanup failed with error code: %d\n", WSAGetLastError());
+		return 1;
+	}
+	if (AcceptedStr != NULL) {//have to check the recieved massage?
+		free(AcceptedStr);
+	}
+	DestroyLock(file_lock);
+	DestroyLock(sync_function_lock);
+	DestroyLock(geuss_lock);
+	DestroyLock(game_result_lock);
+	CloseHandle(semaphore_gun);
+	CloseHandle(semaphore_mag);
+	CloseHandle(sempaphore_guess);
+	return 0;
 }
-*/
 
+	
 
 void format_game_results(int my_bulls, int my_cows, char* Oponent_Client_Name,int other_client_geuss, char* temp_buffer) {
 	char temp_num[7];
