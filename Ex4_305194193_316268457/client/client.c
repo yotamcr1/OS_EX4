@@ -4,8 +4,9 @@
 #include "client.h"
 #include "SocketSendRecvTools.h"
 
-#define CLIENT_TIMEOUT 300000 //timeout in miliseconds
+#define CLIENT_TIMEOUT 30000 //timeout in miliseconds
 #define BLOCKING_TIMEOUT 0
+#define SERVER_TIMEOUT 15000
 SOCKET m_socket;
 
 //TBD: I THINK THE CLIENT LOGIC ITS OK NOW, WE JUST HAVE TO HANDLE GRACEFULL DISCONNECTING :)
@@ -62,6 +63,7 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 	/*TBD: use setsocket for getting answer from the server
 	if there is no answer from server: handle_connection_problems(clientService,serverport,serverIP_Address,0);
 	*/
+	set_socket_timeout(SERVER_TIMEOUT, m_socket);
 	AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 	printf("Client Recived Massage:\n");
 	printf("%s", AcceptedStr);
@@ -90,7 +92,6 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 					printf("error while sending CLIENT_DISCONNECT to server\n");
 					return 0x555;
 				}
-				//TBD: call to gracefull shutdown function for client
 				gracefull_client_shutdown(m_socket, AcceptedStr);
 			}
 			free(AcceptedStr);
@@ -102,7 +103,7 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 			printf("%s", AcceptedStr);
 			free(AcceptedStr);
 			AcceptedStr = NULL;
-			//set_socket_timeout(DEFAULT_TIMEOUT, m_socket);
+			set_socket_timeout(BLOCKING_TIMEOUT, m_socket);
 			if (massage_type == SERVER_INVITE) {
 				printf("Game is on!\n");
 				game_routine(m_socket);
@@ -299,7 +300,7 @@ void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsig
 //In a graceful shutdown, any data that has been queued, but not yet transmitted can be sent prior to the connection being closed
 int gracefull_client_shutdown(SOCKET m_socket,char* AcceptedStr) {
 	int RecvRes, iResult;
-	shutdown(socket,SD_SEND); //signal end of session and that client has no more data to send
+	shutdown(m_socket,SD_SEND); //signal end of session and that client has no more data to send
 	RecvRes = ReceiveString(&AcceptedStr, m_socket);
 	if (check_transaction_return_value(RecvRes, &m_socket))
 		return 1;//TBD: is it OK

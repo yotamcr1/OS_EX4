@@ -39,5 +39,6 @@ int get_4digit_number_from_massage(char* str);
 void game_calculate_and_update_status(int numA, int numB, int A_guess_B, int B_guess_A);
 void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name, int my_user_name_size);
 int write_client_name_to_game_file(int* am_i_first, char* Client_Name, int client_name_length);
+int gracefull_server_shutdown(SOCKET m_socket, char* AcceptedStr);
 void format_game_results(int my_bulls, int my_cows, char* Oponent_Client_Name, int other_client_geuss, char* temp_buffer);
 #endif
