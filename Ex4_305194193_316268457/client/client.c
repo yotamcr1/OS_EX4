@@ -183,8 +183,6 @@ void game_routine(SOCKET m_socket) {
 			}
 			printf("Client Recived Massage within game_routine:\n");
 			printf("%s\n", AcceptedStr);
-			free(AcceptedStr);
-			AcceptedStr = NULL;
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			printf("Client Recived Massage within game_routine:\n");
 			printf("%s\n", AcceptedStr);

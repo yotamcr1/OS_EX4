@@ -324,6 +324,7 @@ void sync_function() {
 		printf("Second Thread released the semphore\n");
 	}
 }
+
 static DWORD ServiceThread(SOCKET* t_socket) {
 	char SendStr[SEND_STR_SIZE];
 	DWORD wait_code;
@@ -502,13 +503,7 @@ server_main_menu:
 			return 1;
 		}
 	}
-
-
-
-
-
 }
-
 
 int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
 	write_lock(game_result_lock);
