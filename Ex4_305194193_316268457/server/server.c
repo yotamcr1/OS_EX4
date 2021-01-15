@@ -7,7 +7,7 @@ HANDLE Thread_Connection_File[NUM_OF_WORKER_THREADS];
 lock* p_lock = NULL;
 int number_of_connected_clients = 0;
 HANDLE semaphore_gun = NULL;
-int reader_count = 0;
+int reader_count = 0, first_client_secret_number = 0, second_client_secret_number = 0;
 
 void write_to_file(HANDLE file,const char* str) {
 
@@ -31,7 +31,6 @@ void read_from_file(HANDLE file, char* str) {
 		printf("Error occoured within read_from_file function\n");
 }
 
-
 void initialize_semaphore() {
 	semaphore_gun = CreateSemaphoreA(NULL, 0, 1, NULL);  
 	if (NULL == semaphore_gun){
@@ -40,30 +39,6 @@ void initialize_semaphore() {
 	}
 	return 1; 
 }
-/*void initialize_mutex() {
-
-	fisrtMutex = CreateMutex(
-		NULL,              // default security attributes
-		FALSE,             // initially not owned
-		NULL);             // unnamed mutex
-
-	if (fisrtMutex == NULL)
-	{
-		printf("CreateMutex error: %d\n, exit\n", GetLastError());
-		exit (1);
-	}
-	secondMutex = CreateMutex(
-		NULL,              // default security attributes
-		FALSE,             // initially not owned
-		NULL);             // unnamed mutex
-
-	if (secondMutex == NULL)
-	{
-		CloseHandle(fisrtMutex);
-		printf("CreateMutex error: %d\n, exit\n", GetLastError());
-		exit(1);
-	}
-}*/
 
 void MainServer(int ServerPort) {
 
@@ -181,7 +156,6 @@ static int FindFirstUnusedThreadSlot()
 	return Ind;
 }
 
-
 DWORD get_file_orig_size(HANDLE file) {
 	DWORD size = GetFileSize(
 		file, NULL
@@ -192,7 +166,6 @@ DWORD get_file_orig_size(HANDLE file) {
 	}
 	return size;
 }
-
 
 void get_client_name(char* client_request_massage, char* destination_client_name) {
 	int i = 0,j=0; 
@@ -222,6 +195,70 @@ int send_massage(char* str,SOCKET* t_socket) {
 	return 1; //Success
 }
 
+void write_geuss_number_to_game_file(int am_i_first, int my_geuss) {
+	//am_i_first will be 1 only for the first client connected to the server.
+	char buffer[5];
+	_itoa_s(my_geuss, buffer,5, 10);
+	/*  CRITICAL Section: */
+	/*if (am_i_first == 0) {//Second Client, we want it to write after the first one!
+		//The second Client will get stuck here until the first client will finish to write his guess to the file
+		//using semaphore gun for this.
+		printf("Second Client waiting for first client to write his geuss");
+		DWORD wait_for_semaphore = WaitForSingleObject(semaphore_gun, TIMEOUT);
+		if (wait_for_semaphore == WAIT_TIMEOUT)
+		{
+			printf("Timeout has been reached within write_client_name_to_game_file function for the semaphore\n");
+			//TBD: do here something
+		}
+		else if (wait_for_semaphore == WAIT_OBJECT_0) {
+			printf("Second Client free! first thread realese me!\n");
+		}
+	}*/
+	write_lock(p_lock);
+	HANDLE Thread_connection_file = CreateFileA(
+		"GameSession.txt",
+		GENERIC_READ | GENERIC_WRITE, //Open file with write read
+		FILE_SHARE_READ | FILE_SHARE_WRITE, //the file should be shared by the threads.
+		NULL, //default security mode
+		OPEN_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL, //normal attribute
+		NULL);
+	if (Thread_connection_file == INVALID_HANDLE_VALUE) {
+		printf("ERROR opening the game file withing write_client_name_to_game_file function\n");
+		//TBD: DEAL WITH IT
+	}
+	DWORD ret_val = get_file_orig_size(Thread_connection_file);
+	if (-1 == ret_val) {
+		//TBD: error occur, should close everything and die
+		printf("error within write_client_name_to_game_file function\n");
+	}
+	/*Four optionons here:
+	1. am_i_first = 0 and get orig size = 0,*/
+
+	if (am_i_first == 1) { //This is the first player! 
+		write_to_file(Thread_connection_file, buffer);
+	}
+	else { //This is the second thread!
+		DWORD dwPtrLow = SetFilePointer(Thread_connection_file, NULL, NULL, FILE_END);
+		write_to_file(Thread_connection_file, buffer);
+	}
+	if (!CloseHandle(Thread_connection_file))
+		printf("Error while close file handle within write_client_name_to_game_file function\n"); //No need to close everything here - the game should continue
+	write_release(p_lock);
+	/*End of Critical Section*/
+
+
+	/*if (am_i_first == 1) {
+		//This is the first Client
+		if (!ReleaseSemaphore(semaphore_gun, 1, NULL)) {
+			printf("Error: can't release the semphore gun within write_client_name_to_game_file function\n");
+			//TBD: close program..
+		}
+		printf("First Client Thread released the semphore\n");
+	}*/
+
+}
+
 static DWORD ServiceThread(SOCKET* t_socket) {
 
 	char SendStr[SEND_STR_SIZE];
@@ -234,6 +271,7 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	char Massage_type_str[MAX_MASSAGE_TYPE];
 	DWORD last_error;
 	int am_i_first = 0; //Only the first Client will have am_i_first = 1
+	int my_cows, my_bulls,oponent_cows,oponent_bulls,my_secret_number,other_secret_number,my_geuss, other_client_geuss;
 
 	number_of_connected_clients++; //add current client to the counter
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
@@ -330,7 +368,13 @@ server_main_menu:
 		return 1;
 	printf("Server Recived Massage:\n");
 	printf("%s\n", AcceptedStr);
-	int secret_number = get_4digit_number_from_massage(AcceptedStr);
+	my_secret_number = get_4digit_number_from_massage(AcceptedStr);
+	if (am_i_first == 1) {
+		first_client_secret_number = my_secret_number;
+	}
+	else {
+		second_client_secret_number = my_secret_number;
+	}
 	free(AcceptedStr);
 	AcceptedStr = NULL;
 	//TBD: HERE WE HAVE TO WAIT FOR BOTH CLIENT SENDS THEIR NUMBER
@@ -352,22 +396,73 @@ server_main_menu:
 		//TBD: deal with incorrect massages
 		//this is coding falut!!
 	}
-	int guess = get_4digit_number_from_massage(AcceptedStr);
-	printf("server recieved massage CLIENT_PLAYER_MOVE with guess: %d \n ", guess);
-	//have to write the 4 digit in the file???
-	/*
-		//TBD: call to function that calculate the result massage
-		//Here we send the secret number and the guess of the first client
-		char string[MAX_WRITE_BYTES_TO_GAME_FILE];
-		char temp_num[5];
-		strcpy_s(string, _countof(string), "Client1 secret number:");
-		//itoa(secret_number,temp_num,
-		strcat_s(string, _countof(string), temp_num);
-		strcat_s(string, _countof(string), "and ");
-		strcat_s(string, _countof(string), "strcat_s!");
-	}*/
+	my_geuss = get_4digit_number_from_massage(AcceptedStr);
+	//other_secret_number = (am_i_first == 1) ? second_client_secret_number : first_client_secret_number; 
+	printf("server recieved massage CLIENT_PLAYER_MOVE with guess: %d \n ", my_geuss);
+	write_geuss_number_to_game_file(am_i_first, my_geuss);
+	/*Already known:
+	am_i_first,my_secret_number,other_secret_number, my_geuss
+	Will be calculated within the function:
+	My_cows,my_bulls,oponent_cows,oponent_bulls,other_client_geuss*/
+	calculate_game_result(am_i_first, &my_cows, &my_bulls,&my_secret_number,&other_secret_number,&oponent_cows,&oponent_bulls,&my_geuss,&other_client_geuss);
+	/*Here we have all detailes in our local parmeters:*/
+	printf("Client Name: %s, am_i_first: %d, my_cows: %d, my_bulls: %d, my_secret_number: %d\n,other_secret_number: %d,other_cows: %d, other_bulls: %d, my_geuss: %d, other_geuss: %d\n",Client_Name, am_i_first, my_cows, my_bulls, my_secret_number, other_secret_number, oponent_cows, oponent_bulls, my_geuss, other_client_geuss);
+
 	}
 
+int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
+	reader_count++;
+	HANDLE Thread_connection_file = CreateFileA(
+		"GameSession.txt",
+		GENERIC_READ | GENERIC_WRITE, //Open file with write read
+		FILE_SHARE_READ | FILE_SHARE_WRITE, //the file should be shared by the threads.
+		NULL, //default security mode
+		OPEN_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL, //normal attribute
+		NULL);
+	char other_client_geuss_string[5];
+	int  other_client_secret_number;
+	if (Thread_connection_file == INVALID_HANDLE_VALUE) {
+		printf("ERROR opening the game file calculate_game_result function\n");
+		//TBD: deal with error
+	}
+	char first_temp_num[5], second_temp_num[5];
+	char buffer[MAX_MASSAGE_TYPE];
+	read_from_file(Thread_connection_file, buffer);
+	int j = 0;
+	for (int i = 0; i < 4; i++) {
+		first_temp_num[j] = buffer[i];
+		second_temp_num[j] = buffer[i + 4];
+		j++;
+	}
+	first_temp_num[j] = '\0';
+	second_temp_num[j] = '\0';
+	if (am_i_first == 1) {
+		other_client_secret_number = second_client_secret_number;
+		*other_client_geuss = atoi(second_temp_num);
+		*my_geuss = atoi(first_temp_num);
+	}
+	else {
+		other_client_secret_number = first_client_secret_number;
+		*my_geuss = atoi(second_temp_num);
+		*other_client_geuss = atoi(first_temp_num);
+	}
+	if (!CloseHandle(Thread_connection_file)) {
+		printf("Can't close the thread within read_file_get_opponent_user_name function\n");
+		//TBD: ...
+	}
+	game_calculate_and_update_status(other_client_secret_number, *my_geuss, my_cows, my_bulls);
+	game_calculate_and_update_status(my_secret_number, *other_client_geuss, oppnent_cows, oponent_bulls);
+	//game_calculate_and_update_status()
+	printf("am_i_first = %d, number of bulls - %d, number of cows - %d,\n",am_i_first, *my_bulls, *my_cows);
+	if (reader_count == 2) {
+		if (DeleteFile("GameSession.txt") == 0) {
+			printf("didnt delete file within read_file_get_opponent_name\n");
+		}
+		reader_count = 0;
+	}
+	
+}
 
 int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client_name_length) {
 	//am_i_first will be 1 only for the first client connected to the server.
@@ -458,7 +553,8 @@ void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name,
 
 	read_from_file(Thread_connection_file, file_str_name_contents); 
 	int j = 0;
-	for (int i = 0 ; i < (last_byte_position - first_byte_position); i++) {
+
+	for (int i = first_byte_position; i < (last_byte_position - first_byte_position); i++) {
 		Oponent_Client_Name[j] = file_str_name_contents[i];
 		j++;
 	}
@@ -468,7 +564,8 @@ void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name,
 		printf("Can't close the thread within read_file_get_opponent_user_name function\n");
 		//TBD: ...
 	}
-	if (reader_count==2){
+	if (reader_count == 2){
+		reader_count = 0;
 		if (DeleteFile("GameSession.txt") == 0) {
 			printf("didnt delete file within read_file_get_opponent_name\n");
 		}
@@ -485,34 +582,20 @@ int get_4digit_number_from_massage(char* str) {
 	return number;
 }
 
-/// <summary>
-/// 
-/// </summary>
-/// <param name="numA"></param> The 4 digits number of player A, all digits must be different
-/// <param name="numB"></param>The 4 digits number of player B, all digits must be different
-/// <param name="A_guess_B"></param> the 4 digits player A guess that B has 
-/// <param name="B_guess_A"></param> the 4 digits player B guess that A has 
-void game_calculate_and_update_status(int numA, int numB, int A_guess_B, int B_guess_A) {
+void game_calculate_and_update_status(int oponent_secret_number, int my_geuss, int* cows, int* bulls) {
 
-	int A_secret_digits[4] = { numA % 10,(numA / 10) % 10,(numA / 100) % 10,(numA / 1000) % 10 };
-	int B_secret_digits[4] = { numB % 10,(numB / 10) % 10,(numB / 100) % 10,(numB / 1000) % 10 };
-	int A_guess_B_digits[4] = { A_guess_B % 10,(A_guess_B / 10) % 10,(A_guess_B / 100) % 10,(A_guess_B / 1000) % 10 };
-	int B_guess_A_digits[4] = { B_guess_A % 10,(B_guess_A / 10) % 10,(B_guess_A / 100) % 10,(B_guess_A / 1000) % 10 };
-	int num_of_bull_A = 0, num_of_bull_B = 0, num_of_cows_A = 0, num_of_cows_B = 0;
+	int oponent_secret_num_array[4] = { oponent_secret_number % 10,(oponent_secret_number / 10) % 10,(oponent_secret_number / 100) % 10,(oponent_secret_number / 1000) % 10 };
+	int my_geuss_array[4] = { my_geuss % 10,(my_geuss / 10) % 10,(my_geuss / 100) % 10,(my_geuss / 1000) % 10 };
+	int num_of_bull_A = 0,  num_of_cows_A = 0, num_of_cows_B = 0;
 	for (int i = 0; i < 4; i++) {
 
-		num_of_bull_A += (A_secret_digits[i] == B_guess_A_digits[i]) ? 1 : 0;
-		num_of_bull_B += (B_secret_digits[i] == A_guess_B_digits[i]) ? 1 : 0;
+		num_of_bull_A += (oponent_secret_num_array[i] == my_geuss_array[i]) ? 1 : 0;
 
 		for (int j = 0; j < 4; j++) {
-			if ((A_secret_digits[i] == B_guess_A_digits[j]) && (i != j))
+			if ((oponent_secret_num_array[i] == my_geuss_array[j]) && (i != j))
 				num_of_cows_A += 1;
-			if ((B_secret_digits[i] == A_guess_B_digits[j]) && (i != j))
-				num_of_cows_B += 1;
 		}
 	}
-	printf("A number is %d, B number is %d\n",numA,numB);
-	printf("A geuss %d, B guess %d\n", A_guess_B, B_guess_A);
-	printf("A: bulls %d , cows %d\n",num_of_bull_A,num_of_cows_A);
-	printf("B: bulls %d, cows %d\n",num_of_bull_B,num_of_cows_B);
+	*cows = num_of_cows_A;
+	*bulls = num_of_bull_A;
 }
