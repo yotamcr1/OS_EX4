@@ -183,10 +183,12 @@ void game_routine(SOCKET m_socket) {
 			}
 			printf("Client Recived Massage within game_routine:\n");
 			printf("%s\n", AcceptedStr);
+			free(AcceptedStr);
+			AcceptedStr = NULL; 
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			printf("Client Recived Massage within game_routine:\n");
 			printf("%s\n", AcceptedStr);
-			if (check_transaction_return_value(RecvRes, m_socket))
+			if (check_transaction_return_value(RecvRes, &m_socket))
 				return 1; 
 			massage_type = get_massage_type(AcceptedStr);
 		}

@@ -325,6 +325,16 @@ void sync_function() {
 	}
 }
 
+void format_win_result(char* Client_Name, int other_secret_number, char* temp_buffer) {
+	char temp_num[7];
+	memset(temp_buffer, 0, sizeof(temp_buffer));// rest the SendStr
+	strcpy_s(temp_buffer, MAX_USER_NAME, Client_Name);
+	strcat_s(temp_buffer, MAX_USER_NAME + 15, ";");
+	_itoa_s(other_secret_number, temp_num, 5, 10);
+	strcat_s(temp_buffer, MAX_USER_NAME + 30, temp_num);
+	strcat_s(temp_buffer, 100, "\n");
+}
+
 static DWORD ServiceThread(SOCKET* t_socket) {
 	char SendStr[SEND_STR_SIZE];
 	DWORD wait_code;
@@ -484,14 +494,8 @@ server_main_menu:
 		}
 	}
 	else if (my_bulls == 4){
-		char temp_num[7]; 
-		memset(temp_buffer, 0, sizeof(temp_buffer));// rest the SendStr
-		strcpy_s(temp_buffer, 15, "Winner is:");
-		strcat_s(temp_buffer, MAX_USER_NAME + 15, Client_Name);
-		strcat_s(temp_buffer, MAX_USER_NAME + 30, ";other Secret Num:");
-		_itoa_s(other_secret_number, temp_num, 5, 10);
-		strcat_s(temp_buffer, MAX_USER_NAME + 30, temp_num);
-		strcat_s(temp_buffer, 100, "\n");
+		memset(SendStr, 0, sizeof(SendStr));
+		format_win_result(Client_Name, other_secret_number, SendStr);
 		concatenate_str_for_msg(SERVER_WIN_MSG, temp_buffer, SendStr);
 		printf("Server Send massage:\n%s\n", SendStr);
 		if (!send_massage(SendStr, t_socket)) {
@@ -499,7 +503,24 @@ server_main_menu:
 			return 1;
 		}
 	}
+	else if (oponent_bulls == 4) {
+		format_win_result(Oponent_Client_Name, my_secret_number, SendStr);
+		concatenate_str_for_msg(SERVER_WIN_MSG, temp_buffer, SendStr);
+		printf("Server Send massage:\n%s\n", SendStr);
+		if (!send_massage(SendStr, t_socket)) {
+			//TBD: ERROR OCCUR
+			return 1;
+		}
+	}
+	else {
+		if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
+			//TBD: ERROR OCCUR
+			return 1;
+		}	
+	}
 }
+
+
 
 int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
 	write_lock(game_result_lock);
@@ -721,7 +742,6 @@ int gracefull_server_shutdown(SOCKET m_socket, char* AcceptedStr) {
 
 }
 */
-
 
 void format_game_results(int my_bulls, int my_cows, char* Oponent_Client_Name,int other_client_geuss, char* temp_buffer) {
 	char temp_num[7];
