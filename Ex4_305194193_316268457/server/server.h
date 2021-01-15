@@ -10,6 +10,8 @@
 #define DEFAULT_BUFLEN 512
 #define SEND_STR_SIZE 120
 #define MAX_WRITE_BYTES_TO_GAME_FILE 200 //TBD: check if it neccessary and the size 
+#define SERVER_TIMEOUT 15000
+#define BLOCKING_TIMEOUT 0
 
 #include <windows.h>
 #include <winsock2.h>

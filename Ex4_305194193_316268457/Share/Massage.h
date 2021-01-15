@@ -4,6 +4,7 @@
 #define MAX_MASSAGE_TYPE 40
 #define MAX_USER_NAME 20
 #define SEND_STR_SIZE 120
+#define MAX_ID_SIZE 16
 //massages size drfinition:
 //Client massages:
 #define CLIENT_REQUEST 1
