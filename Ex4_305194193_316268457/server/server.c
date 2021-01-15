@@ -4,40 +4,47 @@
 HANDLE ThreadHandles[NUM_OF_WORKER_THREADS]; 
 SOCKET ThreadInputs[NUM_OF_WORKER_THREADS];
 HANDLE Thread_Connection_File[NUM_OF_WORKER_THREADS];
-lock* p_lock = NULL;
+lock* file_lock = NULL, *sync_function_lock = NULL,*geuss_lock = NULL,*game_result_lock = NULL;
 int number_of_connected_clients = 0;
-HANDLE semaphore_gun = NULL;
-int reader_count = 0, first_client_secret_number = 0, second_client_secret_number = 0;
+HANDLE semaphore_gun = NULL,semaphore_mag = NULL,sempaphore_guess = NULL;
+int reader_count = 0, first_client_secret_number = 0, second_client_secret_number = 0,arriavl=0;
 
 void write_to_file(HANDLE file,const char* str) {
 
 	DWORD dwBytesWrite = 0;
-	//write_lock(p_lock);
-	//TBD: write operation
 	if (!WriteFile(file, str, strlen(str), &dwBytesWrite, NULL)) {
-		printf("error while trying to write into the output file. exit\n");
+		printf("write_to_file: error while trying to write into the output file. exit\n");
 		//TBD: close everything
+		exit(1);
+		
 	}
-	//write_release(p_lock);
 }
 
 void read_from_file(HANDLE file, char* str) {
-	//read_lock(p_lock);
 	DWORD dwBytesRead = 0;
-	//TBD: read opreation
-	if (!ReadFile(file, str, 45, &dwBytesRead, NULL))
-		//printf("%s", GetLastError());
-		//read_release(p_lock);
-		printf("Error occoured within read_from_file function\n");
+	if (!ReadFile(file, str, 45, &dwBytesRead, NULL)) {
+		printf("read_from_file: Error occoured within read_from_file function\n");
+		//TBD: close eveything
+		exit(1);
+	}
 }
 
 void initialize_semaphore() {
 	semaphore_gun = CreateSemaphoreA(NULL, 0, 1, NULL);  
 	if (NULL == semaphore_gun){
 		printf("Error within initialize sempaphore functionn\n");
-		return 0; //Errror indicates
+		//TBD:close and die
 	}
-	return 1; 
+	semaphore_mag = CreateSemaphoreA(NULL, 0, 1, NULL);
+	if (NULL == semaphore_mag) {
+		printf("Error within initialize sempaphore functionn\n");
+		//TBD:close and die
+	}
+	sempaphore_guess = CreateSemaphoreA(NULL, 0, 1, NULL);
+	if (NULL == sempaphore_guess) {
+		printf("Error within initialize sempaphore functionn\n");
+		//TBD:close and die
+	}
 }
 
 void MainServer(int ServerPort) {
@@ -47,7 +54,10 @@ void MainServer(int ServerPort) {
 	SOCKADDR_IN service;
 	int bindRes,ListenRes,Ind;
 	//initialize_mutex(); //initialized global firstMutex, secondMutex 
-	p_lock = InitializLock(NUM_OF_WORKER_THREADS);
+	file_lock = InitializLock(NUM_OF_WORKER_THREADS);
+	sync_function_lock = InitializLock(NUM_OF_WORKER_THREADS);
+	geuss_lock = InitializLock(NUM_OF_WORKER_THREADS);
+	game_result_lock = InitializLock(NUM_OF_WORKER_THREADS);
 	initialize_semaphore();
 	// Initialize Winsock.
 	WSADATA wsaData;
@@ -197,24 +207,11 @@ int send_massage(char* str,SOCKET* t_socket) {
 
 void write_geuss_number_to_game_file(int am_i_first, int my_geuss) {
 	//am_i_first will be 1 only for the first client connected to the server.
-	char buffer[5];
+	char buffer[10];
 	_itoa_s(my_geuss, buffer,5, 10);
 	/*  CRITICAL Section: */
-	/*if (am_i_first == 0) {//Second Client, we want it to write after the first one!
-		//The second Client will get stuck here until the first client will finish to write his guess to the file
-		//using semaphore gun for this.
-		printf("Second Client waiting for first client to write his geuss");
-		DWORD wait_for_semaphore = WaitForSingleObject(semaphore_gun, TIMEOUT);
-		if (wait_for_semaphore == WAIT_TIMEOUT)
-		{
-			printf("Timeout has been reached within write_client_name_to_game_file function for the semaphore\n");
-			//TBD: do here something
-		}
-		else if (wait_for_semaphore == WAIT_OBJECT_0) {
-			printf("Second Client free! first thread realese me!\n");
-		}
-	}*/
-	write_lock(p_lock);
+	write_lock(geuss_lock);
+	int my_arrival; //1 if I was here first, 2 otherwise
 	HANDLE Thread_connection_file = CreateFileA(
 		"GameSession.txt",
 		GENERIC_READ | GENERIC_WRITE, //Open file with write read
@@ -233,32 +230,100 @@ void write_geuss_number_to_game_file(int am_i_first, int my_geuss) {
 		printf("error within write_client_name_to_game_file function\n");
 	}
 	/*Four optionons here:
-	1. am_i_first = 0 and get orig size = 0,*/
-
-	if (am_i_first == 1) { //This is the first player! 
+	1. am_i_first = 0 and ret_val = 0
+	the second client got here first
+	2. am_i_first = 0 and ret_val !=0
+	second client got here second
+	3. am_i_first = 1 and ret_val = 0
+	first client got here first
+	4. am_i_first = 1 and ret_val !=0
+	first client get here second
+	*/
+	
+	if ((am_i_first == 0) && (ret_val == 0)) {
+		printf("second player got first within write_geuss_number_to_game_file function\n");
 		write_to_file(Thread_connection_file, buffer);
-	}
-	else { //This is the second thread!
 		DWORD dwPtrLow = SetFilePointer(Thread_connection_file, NULL, NULL, FILE_END);
 		write_to_file(Thread_connection_file, buffer);
+		//we write the geuss twice, and the first 4 digits should be overide! 
+		my_arrival = 1;
+	}
+	
+	else if (am_i_first == 0 && ret_val != 0) {
+		printf("second player got second within write_geuss_number_to_game_file function\n");
+		DWORD dwPtrLow = SetFilePointer(Thread_connection_file, NULL, NULL, FILE_END);
+		write_to_file(Thread_connection_file, buffer);
+		my_arrival = 2;
+	}
+	else if (am_i_first == 1 && ret_val == 0) {
+		printf("first player got first within write_geuss_number_to_game_file function\n");
+		write_to_file(Thread_connection_file, buffer);
+		my_arrival = 1;
+	}
+	else if (am_i_first == 1 && ret_val != 0) {
+		printf("first player got second within write_geuss_number_to_game_file function\n");
+		char temp_buffer[45];
+		read_from_file(Thread_connection_file, temp_buffer);
+		for (int i = 0; i < 4; i++) //Buffer contains first player geuss, temp_buffer contains twice the other player geuss. 
+			buffer[4 + i] = temp_buffer[i];
+		buffer[8] = '\0';
+		write_to_file(Thread_connection_file, buffer);
+		my_arrival = 2;
 	}
 	if (!CloseHandle(Thread_connection_file))
 		printf("Error while close file handle within write_client_name_to_game_file function\n"); //No need to close everything here - the game should continue
-	write_release(p_lock);
 	/*End of Critical Section*/
+	write_release(geuss_lock);
 
-
-	/*if (am_i_first == 1) {
-		//This is the first Client
-		if (!ReleaseSemaphore(semaphore_gun, 1, NULL)) {
+	
+	if (my_arrival == 1) {
+		//Wait until second thread will write his name to the file! 
+		//using semaphore gun for this.
+		printf("First Arrival waiting for second to release him\n");
+		DWORD wait_for_semaphore = WaitForSingleObject(sempaphore_guess, TIMEOUT);
+		if (wait_for_semaphore == WAIT_TIMEOUT)
+		{
+			printf("Timeout has been reached function for the semaphore\n");
+			return SERVER_NO_OPPONENTS; //TBD: The Caller check it and send this massage to the client! 
+		}
+		else if (wait_for_semaphore == WAIT_OBJECT_0) {
+			printf("First Arrivel released by second!\n");
+		}
+	}
+	else { 
+		if (!ReleaseSemaphore(sempaphore_guess, 1, NULL)) {
 			printf("Error: can't release the semphore gun within write_client_name_to_game_file function\n");
 			//TBD: close program..
 		}
-		printf("First Client Thread released the semphore\n");
-	}*/
+		printf("Second Arrival released the semphore\n");
+	}
+
 
 }
 
+void sync_function() {
+	write_lock(sync_function_lock);
+	arriavl++;
+	if (arriavl == 1) {
+		write_release(sync_function_lock);
+		DWORD wait_for_semaphore = WaitForSingleObject(semaphore_mag, TIMEOUT);
+		if (wait_for_semaphore == WAIT_TIMEOUT)
+		{
+			printf("Timeout has been reached within sync function for the semaphore\n");
+		}
+		else if (wait_for_semaphore == WAIT_OBJECT_0) {
+			printf("First Client free! second thread realese me!\n");
+		}
+	}
+	else {
+		write_release(sync_function_lock);
+		if (!ReleaseSemaphore(semaphore_mag, 1, NULL)) {
+			printf("Error: can't release the semphore gun within write_client_name_to_game_file function\n");
+			//TBD: close program..
+		}
+		printf("Second Thread released the semphore\n");
+	}
+}
 static DWORD ServiceThread(SOCKET* t_socket) {
 
 	char SendStr[SEND_STR_SIZE];
@@ -399,6 +464,8 @@ server_main_menu:
 	my_geuss = get_4digit_number_from_massage(AcceptedStr);
 	//other_secret_number = (am_i_first == 1) ? second_client_secret_number : first_client_secret_number; 
 	printf("server recieved massage CLIENT_PLAYER_MOVE with guess: %d \n ", my_geuss);
+	//Have to wait until both client went here
+	sync_function();// Blocking until both thread will be here. the Porpuse is to make sure that the game file deleted and all information already set
 	write_geuss_number_to_game_file(am_i_first, my_geuss);
 	/*Already known:
 	am_i_first,my_secret_number,other_secret_number, my_geuss
@@ -410,7 +477,9 @@ server_main_menu:
 
 	}
 
+
 int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
+	write_lock(game_result_lock);
 	reader_count++;
 	HANDLE Thread_connection_file = CreateFileA(
 		"GameSession.txt",
@@ -451,6 +520,7 @@ int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_s
 		printf("Can't close the thread within read_file_get_opponent_user_name function\n");
 		//TBD: ...
 	}
+	*other_secret_number = other_client_secret_number;
 	game_calculate_and_update_status(other_client_secret_number, *my_geuss, my_cows, my_bulls);
 	game_calculate_and_update_status(my_secret_number, *other_client_geuss, oppnent_cows, oponent_bulls);
 	//game_calculate_and_update_status()
@@ -461,13 +531,14 @@ int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_s
 		}
 		reader_count = 0;
 	}
+	write_release(game_result_lock);
 	
 }
 
 int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client_name_length) {
 	//am_i_first will be 1 only for the first client connected to the server.
 	/*  CRITICAL Section: */
-	write_lock(p_lock);
+	write_lock(file_lock);
 	HANDLE Thread_connection_file = CreateFileA(
 		"GameSession.txt",
 		GENERIC_READ | GENERIC_WRITE, //Open file with write read
@@ -496,7 +567,7 @@ int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client
 	}
 	if (!CloseHandle(Thread_connection_file))
 		printf("Error while close file handle within write_client_name_to_game_file function\n"); //No need to close everything here - the game should continue
-	write_release(p_lock);
+	write_release(file_lock);
 
 	if (*am_i_first == 1) {
 		//Wait until second thread will write his name to the file! 
@@ -517,12 +588,15 @@ int write_client_name_to_game_file(int* am_i_first,char* Client_Name, int client
 			printf("Error: can't release the semphore gun within write_client_name_to_game_file function\n");
 			//TBD: close program..
 		}
+		printf("Second Client,name: %s\n", Client_Name);
 		printf("Second Thread released the semphore\n");
 	}
 	return 0;
 }
 
 void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name, int my_user_name_size) {
+	write_lock(file_lock);
+	/*Critical Section begin*/
 	reader_count++;
 	HANDLE Thread_connection_file = CreateFileA(
 		"GameSession.txt",
@@ -564,11 +638,29 @@ void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name,
 		printf("Can't close the thread within read_file_get_opponent_user_name function\n");
 		//TBD: ...
 	}
-	if (reader_count == 2){
-		reader_count = 0;
-		if (DeleteFile("GameSession.txt") == 0) {
-			printf("didnt delete file within read_file_get_opponent_name\n");
+	if (reader_count == 1) {
+		write_release(file_lock);
+		DWORD wait_for_semaphore = WaitForSingleObject(semaphore_gun, TIMEOUT);
+		if (wait_for_semaphore == WAIT_TIMEOUT)
+		{
+			printf("Timeout has been reached within write_client_name_to_game_file function for the semaphore\n");
+			return SERVER_NO_OPPONENTS; //TBD: The Caller check it and send this massage to the client! 
 		}
+		else if (wait_for_semaphore == WAIT_OBJECT_0) {
+			printf("First Client free! second thread realese me!\n");
+		}
+	}
+	else if (reader_count == 2){
+		write_release(file_lock);
+		reader_count = 0;
+		if (DeleteFileA("GameSession.txt") == 0) {
+			printf("didnt delete file within read_file_get_opponent_name\nreason: %d\n",GetLastError());
+		}
+		if (!ReleaseSemaphore(semaphore_gun, 1, NULL)) {
+			printf("Error: can't release the semphore gun within write_client_name_to_game_file function\n");
+			//TBD: close program..
+		}
+		printf("Second Thread released the semphore\n");
 	}
 }
 
