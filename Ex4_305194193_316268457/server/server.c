@@ -325,7 +325,6 @@ void sync_function() {
 	}
 }
 static DWORD ServiceThread(SOCKET* t_socket) {
-
 	char SendStr[SEND_STR_SIZE];
 	DWORD wait_code;
 	BOOL Done = FALSE;
@@ -339,6 +338,7 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	int my_cows, my_bulls,oponent_cows,oponent_bulls,my_secret_number,other_secret_number,my_geuss, other_client_geuss;
 
 	number_of_connected_clients++; //add current client to the counter
+	set_socket_timeout(SERVER_TIMEOUT, *t_socket);
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	printf("Server Recived Massage:\n");
 	printf("%s\n", AcceptedStr);
@@ -369,6 +369,7 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	printf("Server Send Massage: SERVER_APPROVED\n");
 
 server_main_menu:
+	set_socket_timeout(BLOCKING_TIMEOUT, *t_socket);
 	if (!send_massage(SERVER_MAIN_MENU_MSG, t_socket)) {
 		//TBD: ERROR OCCUR
 		return 1;

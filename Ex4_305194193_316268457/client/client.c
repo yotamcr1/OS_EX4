@@ -5,13 +5,16 @@
 #include "SocketSendRecvTools.h"
 
 #define CLIENT_TIMEOUT 300000 //timeout in miliseconds
+#define BLOCKING_TIMEOUT 0
 SOCKET m_socket;
 
 //TBD: I THINK THE CLIENT LOGIC ITS OK NOW, WE JUST HAVE TO HANDLE GRACEFULL DISCONNECTING :)
 
-void ClientMain(char* username, int serverport, unsigned long serverIP_Address) {
+void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 	printf("welcom to ClientMain \n");
 	SOCKADDR_IN clientService;
+	unsigned long serverIP_Address;
+	serverIP_Address = inet_addr(serverIP_Address_str);
 	int answer_num;
 	// Initialize Winsock.
 	WSADATA wsaData; //Create a WSADATA object called wsaData.
@@ -44,8 +47,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 	if (iResult == SOCKET_ERROR) {
 		handle_connection_problems(clientService, serverport, serverIP_Address,0);
 	}
-	//TBD:change the printed IP address
-	printf("Connected to server on %lu:%d\n", serverIP_Address, serverport);//connected successfully
+	printf("Connected to server on %s:%d\n", serverIP_Address_str, serverport);//connected successfully
 
 	//send the client name to the server:
 	concatenate_str_for_msg(CLIENT_REQUEST_MSG, username,SendStr);
@@ -80,7 +82,7 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 					printf("error while sending CLIENT_VERSUS_MSG to server\n");
 					return 0x555;
 				}
-				printf("Client sending CLIENT_VERSUS massage:\n");
+				printf("Client sending CLIENT_VERSUS massage\n");
 			}
 			else {//send to server client disconnect and exit
 				if ((SendString(CLIENT_DISCONNECT_MSG, m_socket)) == TRNS_FAILED)
@@ -88,22 +90,19 @@ void ClientMain(char* username, int serverport, unsigned long serverIP_Address) 
 					printf("error while sending CLIENT_DISCONNECT to server\n");
 					return 0x555;
 				}
-				WSACleanup();//TBD: check if all resources are free:
-				iResult = closesocket(m_socket);
-				if (iResult == SOCKET_ERROR)
-					printf("closesocket function failed with error: %ld\n", WSAGetLastError());
 				//TBD: call to gracefull shutdown function for client
 				gracefull_client_shutdown(m_socket, AcceptedStr);
 			}
 			free(AcceptedStr);
 			AcceptedStr = NULL;
+			//TBD: have to wait 30 seconds for answer- check it:
+			set_socket_timeout(CLIENT_TIMEOUT, m_socket);
 			AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 			printf("Client Recived Massage:\n");
 			printf("%s", AcceptedStr);
-			//TBD: have to wait 30 seconds for answer- HOW?
-			//set_socket_timeout(CLIENT_TIMEOUT, m_socket);
 			free(AcceptedStr);
 			AcceptedStr = NULL;
+			//set_socket_timeout(DEFAULT_TIMEOUT, m_socket);
 			if (massage_type == SERVER_INVITE) {
 				printf("Game is on!\n");
 				game_routine(m_socket);
@@ -170,8 +169,6 @@ void game_routine(SOCKET m_socket) {
 				printf("Socket error while trying to write data to socket\n");
 				return 0x555;
 			}
-			printf("Client Send Massage within game_routine:\n");
-			printf("%s\n", SendStr);
 			free(AcceptedStr);
 			AcceptedStr = NULL;
 			//Chen: Here we got stuck
@@ -191,8 +188,8 @@ void game_routine(SOCKET m_socket) {
 			RecvRes = ReceiveString(&AcceptedStr, m_socket);
 			printf("Client Recived Massage within game_routine:\n");
 			printf("%s\n", AcceptedStr);
-			/*if (check_transaction_return_value(RecvRes, m_socket))
-			return 1;*/ //TBD: check RecvRes 
+			if (check_transaction_return_value(RecvRes, m_socket))
+				return 1; 
 			massage_type = get_massage_type(AcceptedStr);
 		}
 		//if we are here so there is a winner or a tie or opponent quit:
@@ -301,13 +298,15 @@ void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsig
 //for every shutdown we have to gracefully shutdown the client:
 //In a graceful shutdown, any data that has been queued, but not yet transmitted can be sent prior to the connection being closed
 int gracefull_client_shutdown(SOCKET m_socket,char* AcceptedStr) {
-	int RecvRes;
+	int RecvRes, iResult;
 	shutdown(socket,SD_SEND); //signal end of session and that client has no more data to send
 	RecvRes = ReceiveString(&AcceptedStr, m_socket);
 	if (check_transaction_return_value(RecvRes, &m_socket))
 		return 1;//TBD: is it OK
 	//have to check the recieved massage?
-	closesocket(m_socket);
+	iResult = closesocket(m_socket);
+	if (iResult == SOCKET_ERROR)
+		printf("closesocket function failed with error: %ld\n", WSAGetLastError());
 	if (WSACleanup()) {//if wsacleanup failed
 		printf("WSACleanup failed with error code: %d\n", WSAGetLastError());
 		return 1;

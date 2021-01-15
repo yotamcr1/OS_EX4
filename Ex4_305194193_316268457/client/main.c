@@ -11,16 +11,15 @@
 int main(int argc, char* argv[]) {
 	
 	printf("welcom to main within client project\n");
-	unsigned long serverIP_Address;
+	char serverIP_Address_str[MAX_ID_SIZE];
 	int serverPort;
 	char username[MAX_USER_NAME];
-
-	serverIP_Address = inet_addr(argv[1]);
+	strcpy_s(serverIP_Address_str, MAX_ID_SIZE, argv[1]);
 	serverPort = atoi(argv[2]);
 	int res = strcpy_s(username, 20, argv[3]);
 
 	//TBD: CHECKS INPUTS AND ETC
 
-	ClientMain(username, serverPort, serverIP_Address);
+	ClientMain(username, serverPort, serverIP_Address_str);
 
 }
