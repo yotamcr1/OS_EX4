@@ -36,7 +36,6 @@ void get_client_name(char* client_request_massage, char* destination_client_name
 int send_massage(char* str, SOCKET* t_socket);
 static DWORD ServiceThread(SOCKET* t_socket);
 int get_4digit_number_from_massage(char* str);
-void game_first_client(SOCKET* t_socket, HANDLE game_file, char* client_name);
 void game_calculate_and_update_status(int numA, int numB, int A_guess_B, int B_guess_A);
 void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name, int my_user_name_size);
 int write_client_name_to_game_file(int* am_i_first, char* Client_Name, int client_name_length);

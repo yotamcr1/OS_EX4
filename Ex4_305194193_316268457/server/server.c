@@ -396,8 +396,6 @@ server_main_menu:
 	}
 
 	/*Client Versus Massage type:*/
-	/* critical code section */
-
 	int writing_return_val = write_client_name_to_game_file(&am_i_first, Client_Name, strlen(Client_Name));
 	if (writing_return_val == SERVER_NO_OPPONENTS) {
 		if (!send_massage(SERVER_NO_OPPONENTS_MSG, t_socket)) {
@@ -410,9 +408,6 @@ server_main_menu:
 			//TBD:go back to main manu
 		}
 	}
-	/*Here we should have 2 connected opponets,
-	and am_i_first is equal to 1 only for the first client. this order should be saved
-	*/
 	read_file_get_opponent_user_name(am_i_first, Oponent_Client_Name, strlen(Client_Name));
 	concatenate_str_for_msg(SERVER_INVITE_MSG, Oponent_Client_Name, SendStr);
 	if (!send_massage(SendStr, t_socket)) {
@@ -428,7 +423,6 @@ server_main_menu:
 	free(AcceptedStr);
 	AcceptedStr = NULL;
 	printf("Server sending SERVER_SETUP_REQUEST_MSG massage:\n");
-	//here server should recieve client setup massage!
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
@@ -443,13 +437,13 @@ server_main_menu:
 	}
 	free(AcceptedStr);
 	AcceptedStr = NULL;
-	//TBD: HERE WE HAVE TO WAIT FOR BOTH CLIENT SENDS THEIR NUMBER
-	//TBD: HERE WE HAVE TO WRITE IT TO THE FILE
+
+	/*SERVER_PLAYER_MOVE_REQUEST: maybe the pointer to the while loop*/
 	if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
 		//TBD: ERROR OCCUR
 		return 1;
 	}
-	printf("Server sending SERVER_PLAYER_MOVE_REQUEST_MSG massage:\n");
+	printf("Server sending SERVER_PLAYER_MOVE_REQUEST_MSG massage to client %s\n",Client_Name);
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	if (check_transaction_return_value(RecvRes, t_socket))
 		return 1;
@@ -463,7 +457,6 @@ server_main_menu:
 		//this is coding falut!!
 	}
 	my_geuss = get_4digit_number_from_massage(AcceptedStr);
-	//other_secret_number = (am_i_first == 1) ? second_client_secret_number : first_client_secret_number; 
 	printf("server recieved massage CLIENT_PLAYER_MOVE with guess: %d \n ", my_geuss);
 	//Have to wait until both client went here
 	sync_function();// Blocking until both thread will be here. the Porpuse is to make sure that the game file deleted and all information already set
@@ -475,8 +468,46 @@ server_main_menu:
 	calculate_game_result(am_i_first, &my_cows, &my_bulls,&my_secret_number,&other_secret_number,&oponent_cows,&oponent_bulls,&my_geuss,&other_client_geuss);
 	/*Here we have all detailes in our local parmeters:*/
 	printf("Client Name: %s, am_i_first: %d, my_cows: %d, my_bulls: %d, my_secret_number: %d\n,other_secret_number: %d,other_cows: %d, other_bulls: %d, my_geuss: %d, other_geuss: %d\n",Client_Name, am_i_first, my_cows, my_bulls, my_secret_number, other_secret_number, oponent_cows, oponent_bulls, my_geuss, other_client_geuss);
-
+	char temp_buffer[SEND_STR_SIZE];
+	char temp_num[7];
+	strcpy_s(temp_buffer, 15, "my_bulls:");
+	_itoa_s(my_bulls, temp_num, 5, 10);
+	strcat_s(temp_buffer, 20, temp_num);
+	strcat_s(temp_buffer, 25, ";my_cows:");
+	_itoa_s(my_cows, temp_num, 5, 10);
+	strcat_s(temp_buffer, 35, temp_num);
+	strcat_s(temp_buffer, 50, ";other name:");
+	strcat_s(temp_buffer, 65, Oponent_Client_Name);
+	strcat_s(temp_buffer, 85, ";other guess:");
+	_itoa_s(other_client_geuss,temp_num, 5, 10);
+	strcat_s(temp_buffer,95, temp_num);
+	strcat_s(temp_buffer,100, "\n");
+	concatenate_str_for_msg(SERVER_GAME_RESULTS_MSG, temp_buffer, SendStr);
+	printf("Server Send massage:\n%s\n", SendStr);
+	if (!send_massage(SendStr, t_socket)) {
+		//TBD: ERROR OCCUR
+		return 1;
 	}
+	if (my_bulls == 4) {
+		strcpy_s(temp_buffer, 15, "Winner is:");
+		strcat_s(temp_buffer, MAX_USER_NAME + 15, Client_Name);
+		strcat_s(temp_buffer, MAX_USER_NAME + 30, ";other Secret Num:");
+		_itoa_s(other_secret_number, temp_num, 5, 10);
+		strcat_s(temp_buffer, MAX_USER_NAME + 30, temp_num);
+		strcat_s(temp_buffer, 100, "\n");
+		concatenate_str_for_msg(SERVER_WIN_MSG, temp_buffer, SendStr);
+		printf("Server Send massage:\n%s\n", SendStr);
+		if (!send_massage(SendStr, t_socket)) {
+			//TBD: ERROR OCCUR
+			return 1;
+		}
+	}
+
+
+
+
+
+}
 
 
 int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
