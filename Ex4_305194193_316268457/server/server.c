@@ -469,26 +469,22 @@ server_main_menu:
 	/*Here we have all detailes in our local parmeters:*/
 	printf("Client Name: %s, am_i_first: %d, my_cows: %d, my_bulls: %d, my_secret_number: %d\n,other_secret_number: %d,other_cows: %d, other_bulls: %d, my_geuss: %d, other_geuss: %d\n",Client_Name, am_i_first, my_cows, my_bulls, my_secret_number, other_secret_number, oponent_cows, oponent_bulls, my_geuss, other_client_geuss);
 	char temp_buffer[SEND_STR_SIZE];
-	char temp_num[7];
-	strcpy_s(temp_buffer, 15, "my_bulls:");
-	_itoa_s(my_bulls, temp_num, 5, 10);
-	strcat_s(temp_buffer, 20, temp_num);
-	strcat_s(temp_buffer, 25, ";my_cows:");
-	_itoa_s(my_cows, temp_num, 5, 10);
-	strcat_s(temp_buffer, 35, temp_num);
-	strcat_s(temp_buffer, 50, ";other name:");
-	strcat_s(temp_buffer, 65, Oponent_Client_Name);
-	strcat_s(temp_buffer, 85, ";other guess:");
-	_itoa_s(other_client_geuss,temp_num, 5, 10);
-	strcat_s(temp_buffer,95, temp_num);
-	strcat_s(temp_buffer,100, "\n");
+	format_game_results(my_bulls, my_cows, Oponent_Client_Name, other_client_geuss, temp_buffer);
 	concatenate_str_for_msg(SERVER_GAME_RESULTS_MSG, temp_buffer, SendStr);
 	printf("Server Send massage:\n%s\n", SendStr);
 	if (!send_massage(SendStr, t_socket)) {
 		//TBD: ERROR OCCUR
 		return 1;
 	}
-	if (my_bulls == 4) {
+	if ((my_bulls == 4) && (oponent_bulls == 4)) {
+		if (!send_massage(SERVER_DRAW, t_socket)) {
+			//TBD: ERROR OCCUR
+			return 1;
+		}
+	}
+	else if (my_bulls == 4){
+		char temp_num[7]; 
+		memset(temp_buffer, 0, sizeof(temp_buffer));// rest the SendStr
 		strcpy_s(temp_buffer, 15, "Winner is:");
 		strcat_s(temp_buffer, MAX_USER_NAME + 15, Client_Name);
 		strcat_s(temp_buffer, MAX_USER_NAME + 30, ";other Secret Num:");
@@ -502,6 +498,7 @@ server_main_menu:
 			return 1;
 		}
 	}
+	
 
 
 
@@ -730,3 +727,18 @@ int gracefull_server_shutdown(SOCKET m_socket, char* AcceptedStr) {
 
 }
 */
+
+
+void format_game_results(int my_bulls, int my_cows, char* Oponent_Client_Name,int other_client_geuss, char* temp_buffer) {
+	char temp_num[7];
+	_itoa_s(my_bulls, temp_num, 5, 10);
+	strcpy_s(temp_buffer, 20, temp_num);
+	strcat_s(temp_buffer, 25, ";");
+	_itoa_s(my_cows, temp_num, 5, 10);
+	strcat_s(temp_buffer, 30, temp_num);
+	strcat_s(temp_buffer, 40, ";");
+	strcat_s(temp_buffer, strlen(Oponent_Client_Name)+40 , Oponent_Client_Name);
+	strcat_s(temp_buffer, SEND_STR_SIZE, ";");
+	_itoa_s(other_client_geuss, temp_num, 5, 10);
+	strcat_s(temp_buffer, SEND_STR_SIZE, temp_num);
+}

@@ -231,9 +231,9 @@ char* receive_msg(SOCKET socket,char* AcceptedStr,int* massage_type) {
 }
 
 void concatenate_str_for_msg(char* massage_type, char* parameter,char* SendStr) {
-	strcpy_s(SendStr, (strlen(massage_type) + 1 ) * sizeof(char), massage_type);
-	strcat_s(SendStr, (strlen(massage_type) + strlen(parameter) + 2) * sizeof(char), parameter);
-	strcat_s(SendStr, (strlen(massage_type) + strlen(parameter) + 2) * sizeof(char), "\n");
+	strcpy_s(SendStr, (strlen(massage_type) + 1 ), massage_type);
+	strcat_s(SendStr, (strlen(massage_type) + strlen(parameter) + 2) , parameter);
+	strcat_s(SendStr, (strlen(massage_type) + strlen(parameter) + 2) , "\n");
 }
 
 
