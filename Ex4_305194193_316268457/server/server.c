@@ -599,3 +599,10 @@ void game_calculate_and_update_status(int oponent_secret_number, int my_geuss, i
 	*cows = num_of_cows_A;
 	*bulls = num_of_bull_A;
 }
+
+
+/*server gracefull shutdown- first recieve data, then send any remaining data, then shutdown and close socket
+int gracefull_server_shutdown(SOCKET m_socket, char* AcceptedStr) {
+
+}
+*/
