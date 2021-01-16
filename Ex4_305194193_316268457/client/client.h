@@ -3,6 +3,10 @@
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
+#define CLIENT_TIMEOUT 30000 //timeout in miliseconds
+#define BLOCKING_TIMEOUT 0
+#define SERVER_TIMEOUT 15000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

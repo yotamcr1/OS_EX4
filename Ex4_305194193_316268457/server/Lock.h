@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <windows.h>
 
-#define TIMEOUT 100000 
+#define TIMEOUT 1000000 //More than 10 minutes as requeired 
 #define TIMEOUT_15SEC 15000 
 #define TIMEOUT_30SEC 30000 
 
