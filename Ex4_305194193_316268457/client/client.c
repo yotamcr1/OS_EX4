@@ -263,6 +263,7 @@ void extract_game_results(char* AcceptedStr, char* Bulls, char* Cows,char* oppon
 	opponent_guess[j] = '\0';
 }
 
+
 //the function handle cases of: 1. unexpected disconnecting from the server 2. timeout 3.when server denied connection
 //input: clientservice, port, ip address, server_denied_flag- if its 1 will handle server denied case, else handle disconnecting
 void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsigned long serverIP_Address, int server_denied_flag) {
