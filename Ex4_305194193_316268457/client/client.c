@@ -65,6 +65,9 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 	*/
 	set_socket_timeout(SERVER_TIMEOUT, m_socket);
 	AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
+	if (WSAGetLastError() == WSAETIMEDOUT) {
+		handle_connection_problems(clientService, serverport, serverIP_Address, 0);
+	}
 	printf("Client Recived Massage:\n");
 	printf("%s", AcceptedStr);
 	if (massage_type == SERVER_DENIED) {
@@ -108,8 +111,10 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 				printf("Game is on!\n");
 				game_routine(m_socket);
 				AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
-				free(AcceptedStr);
-				AcceptedStr = NULL;
+				if (AcceptedStr != NULL) {
+					free(AcceptedStr);
+					AcceptedStr = NULL;
+				}
 			}
 			//else: massage_type= SERVER_NO_OPPONENTS then show MAIN_MENU again!
 		}

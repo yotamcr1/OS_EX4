@@ -263,7 +263,9 @@ void write_geuss_number_to_game_file(int am_i_first, int my_geuss) {
 	else if (am_i_first == 1 && ret_val != 0) {
 		printf("first player got second within write_geuss_number_to_game_file function\n");
 		char temp_buffer[45];
+		DWORD dwPtrLow = SetFilePointer(Thread_connection_file, NULL, NULL, FILE_BEGIN);
 		read_from_file(Thread_connection_file, temp_buffer);
+		dwPtrLow = SetFilePointer(Thread_connection_file, NULL, NULL, FILE_BEGIN);
 		for (int i = 0; i < 4; i++) //Buffer contains first player geuss, temp_buffer contains twice the other player geuss. 
 			buffer[4 + i] = temp_buffer[i];
 		buffer[8] = '\0';
@@ -380,6 +382,7 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	printf("Server Send Massage: SERVER_APPROVED\n");
 
 server_main_menu:
+	flag = 1;
 	set_socket_timeout(BLOCKING_TIMEOUT, *t_socket);
 	if (!send_massage(SERVER_MAIN_MENU_MSG, t_socket)) {
 		//TBD: ERROR OCCUR
@@ -478,7 +481,7 @@ server_main_menu:
 		am_i_first,my_secret_number,other_secret_number, my_geuss
 		Will be calculated within the function:
 		My_cows,my_bulls,oponent_cows,oponent_bulls,other_client_geuss*/
-		calculate_game_result(am_i_first, &my_cows, &my_bulls, &my_secret_number, &other_secret_number, &oponent_cows, &oponent_bulls, &my_geuss, &other_client_geuss);
+		calculate_game_result(am_i_first, &my_cows, &my_bulls, my_secret_number, &other_secret_number, &oponent_cows, &oponent_bulls, &my_geuss, &other_client_geuss);
 		/*Here we have all detailes in our local parmeters:*/
 		printf("Client Name: %s, am_i_first: %d, my_cows: %d, my_bulls: %d, my_secret_number: %d\n,other_secret_number: %d,other_cows: %d, other_bulls: %d, my_geuss: %d, other_geuss: %d\n", Client_Name, am_i_first, my_cows, my_bulls, my_secret_number, other_secret_number, oponent_cows, oponent_bulls, my_geuss, other_client_geuss);
 		char temp_buffer[SEND_STR_SIZE];
@@ -489,16 +492,21 @@ server_main_menu:
 			//TBD: ERROR OCCUR
 			return 1;
 		}
+		if (AcceptedStr != NULL) {
+			free(AcceptedStr);
+			AcceptedStr = NULL;
+		}
 		if ((my_bulls == 4) && (oponent_bulls == 4)) {
-			if (!send_massage(SERVER_DRAW, t_socket)) {
+			if (!send_massage(SERVER_DRAW_MSG, t_socket)) {
 				//TBD: ERROR OCCUR
 				return 1;
 			}
 			flag = 0;
+			goto server_main_menu;
 		}
 		else if (my_bulls == 4) {
 			memset(SendStr, 0, sizeof(SendStr));
-			format_win_result(Client_Name, other_secret_number, SendStr);
+			format_win_result(Client_Name, other_secret_number, temp_buffer);
 			concatenate_str_for_msg(SERVER_WIN_MSG, temp_buffer, SendStr);
 			printf("Server Send massage:\n%s\n", SendStr);
 			if (!send_massage(SendStr, t_socket)) {
@@ -506,10 +514,10 @@ server_main_menu:
 				return 1;
 			}
 			flag = 0;
-
+			goto server_main_menu;
 		}
 		else if (oponent_bulls == 4) {
-			format_win_result(Oponent_Client_Name, my_secret_number, SendStr);
+			format_win_result(Oponent_Client_Name, my_secret_number, temp_buffer);
 			concatenate_str_for_msg(SERVER_WIN_MSG, temp_buffer, SendStr);
 			printf("Server Send massage:\n%s\n", SendStr);
 			if (!send_massage(SendStr, t_socket)) {
@@ -517,6 +525,7 @@ server_main_menu:
 				return 1;
 			}
 			flag = 0;
+			goto server_main_menu;
 		}
 		else {
 			if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) {
@@ -524,16 +533,14 @@ server_main_menu:
 				return 1;
 			}
 		}
-		if (AcceptedStr != NULL) {
-			free(AcceptedStr);
-			AcceptedStr = NULL;
-		}
+		
+		//TBD:unexpected disconnection of one of the client: send server_opponent_quit and then server_main_menu
 
 	}
 	gracefull_server_shutdown(*t_socket, AcceptedStr);
 }
 
-int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
+int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
 	write_lock(game_result_lock);
 	reader_count++;
 	HANDLE Thread_connection_file = CreateFileA(
@@ -578,7 +585,6 @@ int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int* my_s
 	*other_secret_number = other_client_secret_number;
 	game_calculate_and_update_status(other_client_secret_number, *my_geuss, my_cows, my_bulls);
 	game_calculate_and_update_status(my_secret_number, *other_client_geuss, oppnent_cows, oponent_bulls);
-	//game_calculate_and_update_status()
 	printf("am_i_first = %d, number of bulls - %d, number of cows - %d,\n",am_i_first, *my_bulls, *my_cows);
 	if (reader_count == 2) {
 		if (DeleteFile("GameSession.txt") == 0) {
@@ -733,7 +739,7 @@ void game_calculate_and_update_status(int oponent_secret_number, int my_geuss, i
 
 	int oponent_secret_num_array[4] = { oponent_secret_number % 10,(oponent_secret_number / 10) % 10,(oponent_secret_number / 100) % 10,(oponent_secret_number / 1000) % 10 };
 	int my_geuss_array[4] = { my_geuss % 10,(my_geuss / 10) % 10,(my_geuss / 100) % 10,(my_geuss / 1000) % 10 };
-	int num_of_bull_A = 0,  num_of_cows_A = 0, num_of_cows_B = 0;
+	int num_of_bull_A = 0, num_of_cows_A = 0;
 	for (int i = 0; i < 4; i++) {
 
 		num_of_bull_A += (oponent_secret_num_array[i] == my_geuss_array[i]) ? 1 : 0;
@@ -743,7 +749,7 @@ void game_calculate_and_update_status(int oponent_secret_number, int my_geuss, i
 				num_of_cows_A += 1;
 		}
 	}
-	*cows = num_of_cows_A/4;
+	*cows = num_of_cows_A;
 	*bulls = num_of_bull_A;
 }
 
