@@ -14,11 +14,15 @@
 #include <winsock2.h>
 
 
-
+//the function is the main function: do all the flow of the client process, all the connection with the server
+//input: username, integer of server port and string of the IP address of the server
 void ClientMain(char* username, int serverport, char* serverIP_Address_str);
 
+//the function handle all the game routine- sending messages, get input from client keyboard and extravt info from server's messages
+//input: the socket of the client
 void game_routine(SOCKET m_socket);
 
+//the function extract the winner name and the opponent number from the acceptedstr
 void extract_winner_name_and_opponent_number(char* AcceptedStr, char* winner_name, char* opponent_number);
 
 //the function extracts the game result from the recieved string from the server

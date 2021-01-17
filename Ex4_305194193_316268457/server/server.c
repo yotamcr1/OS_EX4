@@ -365,12 +365,7 @@ void format_win_result(char* Client_Name, int other_secret_number, char* temp_bu
 	strcat_s(temp_buffer, 100, "\n");
 }
 
-void check_if_str_is_allocated(char** str) {
-	if (NULL != *str) {
-		free(*str);
-		*str = NULL;
-	}
-}
+
 
 void free_service_thread_memories(SOCKET* t_socket,char** AcceptedStr) {
 	closesocket(*t_socket);
