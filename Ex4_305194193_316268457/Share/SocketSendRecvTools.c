@@ -1,5 +1,6 @@
 //Authers: Chen Katz And Yotam Carmi
-
+//this file contains the functions related to send and recive massages using socket, 
+//and also additioal functionallity shared by the server and the client projects. 
 
 #include "SocketSendRecvTools.h"
 #include "Massage.h"
@@ -52,48 +53,6 @@ int get_massage_type(const char* str) {
 	return INVALID_MASSAGE_TYPE;
 }
 
-int get_str_of_massage_type(int type,char* destination) {
-	char massage_type[MAX_MASSAGE_TYPE];
-	int ret_val = 0 ; //only one of the condition can be satisfied. if it is, and strcpy_s failed, then ret_val will be !=0. 
-	if (type == CLIENT_REQUEST)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "CLIENT_REQUEST");
-	if (type == CLIENT_VERSUS)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "CLIENT_VERSUS");
-	if (type == CLIENT_SETUP)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "CLIENT_SETUP");
-	if (type == CLIENT_PLAYER_MOVE)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "CLIENT_PLAYER_MOVE");
-	if (type == CLIENT_DISCONNECT)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "CLIENT_DISCONNECT");
-	if (type == SERVER_MAIN_MENU)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_MAIN_MENU");
-	if (type == SERVER_APPROVED)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_APPROVED");
-	if (type == SERVER_DENIED)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_DENIED");
-	if (type == SERVER_INVITE)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_INVITE");
-	if (type == SERVER_SETUP_REQUEST)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_SETUP_REQUSET");
-	if (type == SERVER_PLAYER_MOVE_REQUEST)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_PLAYER_MOVE_REQUEST");
-	if (type == SERVER_GAME_RESULTS)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_GAME_RESULTS");
-	if (type == SERVER_NO_OPPONENTS)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_NO_OPPONENTS");
-	if (type == SERVER_OPPONENT_QUIT)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_OPPONENT_QUIT");
-	if (type == SERVER_OPPONENT_QUIT)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_OPPONENT_QUIT");
-	if (type == SERVER_WIN)
-		ret_val = strcpy_s(massage_type, MAX_MASSAGE_TYPE, "SERVER_WIN");
-
-	if (ret_val) { //strcpy_s return zero on success! 
-		printf("strcpy_s failed within get_str_of_massage_type function.\n");
-		return 1;
-	}
-	return 0;
-}
 
 
 TransferResult_t SendBuffer( const char* Buffer, int BytesToSend, SOCKET sd )

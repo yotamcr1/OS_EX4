@@ -1,6 +1,7 @@
 #include "Lock.h"
 //Authers: Chen Katz And Yotam Carmi
-
+//this file contains the lock from the last exercise. 
+//implement lock using mutex and semaphores.
 
 lock* InitializLock(int num_of_threads) {
 	HANDLE mutex = CreateMutex(

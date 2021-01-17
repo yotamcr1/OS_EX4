@@ -1,9 +1,13 @@
+//Authers: Chen Katz And Yotam Carmi
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+
+//this is the main function for Server Project.
+//its accept a port from the command line and call to MainServer function within the server.c File
+
 #include "server.h"
 #pragma comment(lib,"ws2_32.lib") //Winsock Library
-//Authers: Chen Katz And Yotam Carmi
 
 int main(int argc, char* argv[]) {
 	printf("welcom to server main\n");
@@ -15,4 +19,7 @@ int main(int argc, char* argv[]) {
 	int serverport = atoi(argv[1]);
 	MainServer(serverport);
 }
+
+
+
 

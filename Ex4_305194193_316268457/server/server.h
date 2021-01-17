@@ -20,6 +20,7 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <conio.h>
 #include "SocketSendRecvTools.h"
 #include "Massage.h"
@@ -42,6 +43,9 @@ void initialize_semaphore();
 
 //listening to the CMD terminal of server program, and check every 15 seconds if exit was written, if yes - close the server
 static DWORD listening_to_cmd_keystroke();
+
+//check if the GameSession.txt file exist from previous runs. if yes - main server will remove it.
+int file_exists(char* filename);
 
 //main server. open the socket that the server is listening to, and open a thread for every new connection. input - server port
 void MainServer(int ServerPort);
@@ -100,7 +104,7 @@ void game_calculate_and_update_status(int oponent_secret_number, int my_geuss, i
 //the calls to the function is when we recive "exit" in the server cmd, or when some fatal errors occurd.
 int gracefull_server_shutdown(char* AcceptedStr);
 
-//this function returns a string used to build the game result massage send by the server to the clients. the inputs are bulls
+//this function returns a string used to build the game result massage send by the server to the clients. the inputs are bulls, cows, oponent client name and his guess.
 void format_game_results(int my_bulls, int my_cows, char* Oponent_Client_Name, int other_client_geuss, char* temp_buffer);
 
 #endif

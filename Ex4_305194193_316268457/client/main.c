@@ -1,3 +1,6 @@
+//Authers: Chen Katz And Yotam Carmi
+
+//this is the main function of the client project. this function recive the command line arguments, and send them to the ClientMain function within the client.c file.
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -7,7 +10,6 @@
 #include <winsock2.h>
 #include "Massage.h"
 #pragma comment(lib,"ws2_32.lib") //Winsock Library
-//Authers: Chen Katz And Yotam Carmi
 
 int main(int argc, char* argv[]) {
 	

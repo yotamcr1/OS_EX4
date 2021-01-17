@@ -1,5 +1,6 @@
 #include "server.h"
 //Authers: Chen Katz And Yotam Carmi
+//this file contains all the logic of the server, including open the sockets, open the thread, send and recive masasge according to the game, free memory and close the program.
 
 //Global parameters
 HANDLE ThreadHandles[NUM_OF_WORKER_THREADS]; 
@@ -82,6 +83,11 @@ static DWORD listening_to_cmd_keystroke()
 	return 0;
 }
 
+int file_exists(char* filename) {
+	struct stat   buffer;
+	return (stat(filename, &buffer) == 0);
+}
+
 void MainServer(int ServerPort) {
 
 	unsigned long Address;
@@ -92,7 +98,9 @@ void MainServer(int ServerPort) {
 	geuss_lock = InitializLock(NUM_OF_WORKER_THREADS);
 	game_result_lock = InitializLock(NUM_OF_WORKER_THREADS);
 	initialize_semaphore();
-	// Initialize Winsock.
+	if (file_exists(FILE_NAME)) {
+		remove(FILE_NAME);
+	}
 	Listening_to_cmd_thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)listening_to_cmd_keystroke, NULL, 0, NULL);
 	WSADATA wsaData;
 	int StartupRes = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -374,7 +382,7 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	char SendStr[SEND_STR_SIZE];
 	TransferResult_t RecvRes;
 	char* AcceptedStr = NULL;
-	char Client_Name[MAX_USER_NAME], Oponent_Client_Name[MAX_USER_NAME], Massage_type_str[MAX_MASSAGE_TYPE];
+	char Client_Name[MAX_USER_NAME], Oponent_Client_Name[MAX_USER_NAME];
 	int my_cows, my_bulls, oponent_cows, oponent_bulls, my_secret_number, other_secret_number, my_geuss, other_client_geuss, flag = 1, am_i_first = 0;
 
 	number_of_connected_clients++; //add current client to the counter
@@ -386,7 +394,6 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 		return 1;
 	}
 	int massage_type = get_massage_type(AcceptedStr);
-	get_str_of_massage_type(massage_type, Massage_type_str);
 	get_client_name(AcceptedStr, Client_Name);
 	check_if_str_is_allocated(&AcceptedStr);
 	if (number_of_connected_clients > 2) { //Server is Full
@@ -490,7 +497,6 @@ server_main_menu:
 			return 1;
 		}
 		massage_type = get_massage_type(AcceptedStr);
-		get_str_of_massage_type(massage_type, Massage_type_str);
 		my_geuss = get_4digit_number_from_massage(AcceptedStr);
 		printf("server recieved massage CLIENT_PLAYER_MOVE with guess: %d \n ", my_geuss);
 		sync_function();// Blocking until both thread will be here. the Porpuse is to make sure that the game file deleted and all information already set
