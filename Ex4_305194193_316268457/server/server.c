@@ -12,6 +12,7 @@ lock* file_lock = NULL, *sync_function_lock = NULL,*geuss_lock = NULL,*game_resu
 HANDLE semaphore_gun = NULL,semaphore_mag = NULL,sempaphore_guess = NULL;
 int reader_count = 0, first_client_secret_number = 0, second_client_secret_number = 0,arriavl=0;
 
+
 void write_to_file(HANDLE file,const char* str) {
 
 	DWORD dwBytesWrite = 0;
