@@ -95,7 +95,6 @@ int get_str_of_massage_type(int type,char* destination) {
 	return 0;
 }
 
-
 TransferResult_t SendBuffer( const char* Buffer, int BytesToSend, SOCKET sd )
 {
 	const char* CurPlacePtr = Buffer;
@@ -145,8 +144,6 @@ TransferResult_t SendString( const char *Str, SOCKET sd )
 
 	return SendRes;
 }
-
-/*oOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoOoO*/
 
 TransferResult_t ReceiveBuffer( char* OutputBuffer, int BytesToReceive, SOCKET sd )
 {
@@ -220,8 +217,6 @@ TransferResult_t ReceiveString( char** OutputStrPtr, SOCKET sd )
 }
 
 
-//the function treat recieve massage and return the massage type
-//if the function success, AcceptedStr is dynamic allocated and should be free!
 char* receive_msg(SOCKET socket,char* AcceptedStr,int* massage_type) {
 	TransferResult_t RecvRes;
 	RecvRes = ReceiveString(&AcceptedStr, socket); 
@@ -231,12 +226,12 @@ char* receive_msg(SOCKET socket,char* AcceptedStr,int* massage_type) {
 	return AcceptedStr;
 }
 
+
 void concatenate_str_for_msg(char* massage_type, char* parameter,char* SendStr) {
 	strcpy_s(SendStr, (strlen(massage_type) + 1 ), massage_type);
 	strcat_s(SendStr, (strlen(massage_type) + strlen(parameter) + 2) , parameter);
 	strcat_s(SendStr, (strlen(massage_type) + strlen(parameter) + 2) , "\n");
 }
-
 
 
 int check_transaction_return_value(TransferResult_t tr, SOCKET* t_socket) {
@@ -254,10 +249,17 @@ int check_transaction_return_value(TransferResult_t tr, SOCKET* t_socket) {
 	}
 	return 0;
 }
-
-//the functions set the timeout for the socket 
+ 
 void set_socket_timeout(DWORD timeout, SOCKET socket) {
 	if (setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout))) {
 		printf("ERROR while trying to set the socket timeout within set_socket_timeout\n");
+	}
+}
+
+
+void check_if_str_is_allocated(char** str) {
+	if (NULL != *str) {
+		free(*str);
+		*str = NULL;
 	}
 }

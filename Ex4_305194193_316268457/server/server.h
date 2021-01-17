@@ -68,8 +68,6 @@ void sync_function();
 //inputs: client name, secret number of the other, and temp buffer which will contains the string
 void format_win_result(char* Client_Name, int other_secret_number, char* temp_buffer);
 
-//used to free memory of str and set it back to null, for compability with Recived massage
-void check_if_str_is_allocated(char** str);
 
 //free the resources of the thread. close the socket, free the accpetedstr and return 1.
 void free_service_thread_memories(SOCKET* t_socket, char** AcceptedStr);
