@@ -1,3 +1,4 @@
+//Authers: Chen Katz And Yotam Carmi
 
 
 #include "Massage.h"
@@ -16,7 +17,7 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 	char SendStr[SEND_STR_SIZE];
 	char Massage_type_str[MAX_MASSAGE_TYPE];
 	char* AcceptedStr = NULL;
-	int massage_type;
+	int massage_type = 0;
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR) {
 		printf("WSAStartup function failed with error : % d\n", iResult);
@@ -44,7 +45,7 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 	if ((SendString(SendStr, m_socket)) == TRNS_FAILED)// send client user name to the server
 	{
 		printf("error while sending username to server\n");
-		return 0x555;
+		return 1;
 	}
 	memset(SendStr, 0, sizeof(SendStr));// rest the SendStr
 	/*TBD: use setsocket for getting answer from the server
@@ -72,7 +73,7 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 			if (answer_num == 1) {
 				if ((SendString(CLIENT_VERSUS_MSG, m_socket)) == TRNS_FAILED){
 					printf("error while sending CLIENT_VERSUS_MSG to server\n");
-					return 0x555;
+					return 1;
 				}
 				printf("Client sending CLIENT_VERSUS massage\n");
 			}
@@ -80,7 +81,7 @@ void ClientMain(char* username, int serverport, char* serverIP_Address_str) {
 				if ((SendString(CLIENT_DISCONNECT_MSG, m_socket)) == TRNS_FAILED)
 				{
 					printf("error while sending CLIENT_DISCONNECT to server\n");
-					return 0x555;
+					return 1;
 				}
 				gracefull_client_shutdown(m_socket, AcceptedStr);
 			}
@@ -121,7 +122,7 @@ void game_routine(SOCKET m_socket) {
 	char opponent_guess[5], opponent_number[5];
 	char opponent_username[MAX_USER_NAME];
 	char winner_name[MAX_USER_NAME];
-	int massage_type;
+	int massage_type = 0;
 	AcceptedStr = receive_msg(m_socket, AcceptedStr, &massage_type);
 	TransferResult_t SendRes;
 	printf("Client Recived Massage within game_routine:\n");
@@ -136,7 +137,7 @@ void game_routine(SOCKET m_socket) {
 		SendRes = SendString(SendStr, m_socket);// send : CLIENT_SETUP:1234
 		if (SendRes == TRNS_FAILED){
 			printf("Socket error while trying to write data to socket\n");
-			return 0x555;
+			return 1;
 		}
 		printf("Client Send Massage within game_routine:\n");
 		printf("%s\n", SendStr);
@@ -160,7 +161,7 @@ void game_routine(SOCKET m_socket) {
 			if (SendRes == TRNS_FAILED)
 			{
 				printf("Socket error while trying to write data to socket\n");
-				return 0x555;
+				return 1;
 			}
 			free(AcceptedStr);
 			AcceptedStr = NULL;
@@ -222,8 +223,7 @@ void extract_winner_name_and_opponent_number(char* AcceptedStr, char* winner_nam
 	opponent_number[j] = '\0';
 }
 
-//the function extracts the game result from the recieved string from the server
-// input: recieved string from server, strings of each result from the server that will be fill by the function
+
 void extract_game_results(char* AcceptedStr, char* Bulls, char* Cows,char* opponent_username, char* opponent_guess) {
 	int i = 0;
 	while (AcceptedStr[i] != ':') {
@@ -254,8 +254,7 @@ void extract_game_results(char* AcceptedStr, char* Bulls, char* Cows,char* oppon
 }
 
 
-//the function handle cases of: 1. unexpected disconnecting from the server 2. timeout 3.when server denied connection
-//input: clientservice, port, ip address, server_denied_flag- if its 1 will handle server denied case, else handle disconnecting
+
 void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsigned long serverIP_Address, int server_denied_flag) {
 	int answer_num;
 	int iResult_local = SOCKET_ERROR;
@@ -281,8 +280,7 @@ void handle_connection_problems(SOCKADDR_IN clientService, int serverport, unsig
 	return;
 }
 
-//for every shutdown we have to gracefully shutdown the client:
-//In a graceful shutdown, any data that has been queued, but not yet transmitted can be sent prior to the connection being closed
+
 int gracefull_client_shutdown(SOCKET m_socket,char* AcceptedStr) {
 	int RecvRes, iResult;
 	shutdown(m_socket,SD_SEND); //signal end of session and that client has no more data to send

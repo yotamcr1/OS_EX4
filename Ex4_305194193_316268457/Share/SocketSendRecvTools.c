@@ -1,3 +1,4 @@
+//Authers: Chen Katz And Yotam Carmi
 
 
 #include "SocketSendRecvTools.h"
@@ -225,7 +226,7 @@ char* receive_msg(SOCKET socket,char* AcceptedStr,int* massage_type) {
 	TransferResult_t RecvRes;
 	RecvRes = ReceiveString(&AcceptedStr, socket); 
 	if (check_transaction_return_value(RecvRes, &socket))
-		return 1; //TBD: is it OK?
+		return NULL;
 	*massage_type = get_massage_type(AcceptedStr);
 	return AcceptedStr;
 }
