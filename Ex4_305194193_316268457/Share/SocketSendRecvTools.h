@@ -6,6 +6,7 @@
 #include <string.h>
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
+//Authers: Chen Katz And Yotam Carmi
 
 //Some of the fils is taken from ExampleCode of Recitation 10, course "Introduction to Operation Systems."
 

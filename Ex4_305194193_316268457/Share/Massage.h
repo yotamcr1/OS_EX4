@@ -1,5 +1,6 @@
 #ifndef MASSAGE_H
 #define MASSAGE_H
+//Authers: Chen Katz And Yotam Carmi
 
 #define MAX_MASSAGE_TYPE 40
 #define MAX_USER_NAME 20

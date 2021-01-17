@@ -13,7 +13,8 @@
 
 #define TIMEOUT 1000000 //More than 10 minutes as requeired 
 #define TIMEOUT_15SEC 15000 
-#define TIMEOUT_30SEC 30000 
+#define TIMEOUT_30SEC 30000
+#define TIME_FOR_POLLING 1000
 
 //struct definition:
 

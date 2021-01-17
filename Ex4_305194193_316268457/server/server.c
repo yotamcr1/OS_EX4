@@ -1,4 +1,5 @@
 #include "server.h"
+//Authers: Chen Katz And Yotam Carmi
 
 //Global parameters
 HANDLE ThreadHandles[NUM_OF_WORKER_THREADS]; 
@@ -64,7 +65,7 @@ void initialize_semaphore() {
 
 static DWORD listening_to_cmd_keystroke()
 {
-	char exit_st[LENGTH_EXIT];
+	char exit_st[LENGTH_EXIT] = { 0 };
 	while (TRUE) {
 		if (_kbhit() != 0) { //The _kbhit function checks the console for a recent keystroke. If the function returns a nonzero value, a keystroke is waiting in the buffer. //
 			scanf_s("%s", exit_st, LENGTH_EXIT + 1);
@@ -75,7 +76,7 @@ static DWORD listening_to_cmd_keystroke()
 			}
 		}
 		else
-			Sleep(TIMEOUT_15SEC);
+			Sleep(TIME_FOR_POLLING);
 	}
 	gracefull_server_shutdown(NULL);
 	return 0;
@@ -307,7 +308,6 @@ void write_geuss_number_to_game_file(int am_i_first, int my_geuss) {
 		if (wait_for_semaphore == WAIT_TIMEOUT)
 		{
 			printf("Timeout has been reached function for the semaphore\n");
-			return SERVER_NO_OPPONENTS; //TBD: The Caller check it and send this massage to the client! 
 		}
 		else if (wait_for_semaphore == WAIT_OBJECT_0) {
 			printf("First Arrivel released by second!\n");
@@ -367,7 +367,7 @@ void free_service_thread_memories(SOCKET* t_socket,char** AcceptedStr) {
 	closesocket(*t_socket);
 	check_if_str_is_allocated(AcceptedStr);
 	number_of_connected_clients--;
-	return 1;
+	//pthread_cancel(thread1);
 }
 
 static DWORD ServiceThread(SOCKET* t_socket) {
@@ -375,65 +375,101 @@ static DWORD ServiceThread(SOCKET* t_socket) {
 	TransferResult_t RecvRes;
 	char* AcceptedStr = NULL;
 	char Client_Name[MAX_USER_NAME], Oponent_Client_Name[MAX_USER_NAME], Massage_type_str[MAX_MASSAGE_TYPE];
-	int my_cows, my_bulls,oponent_cows,oponent_bulls,my_secret_number,other_secret_number,my_geuss, other_client_geuss,flag = 1,am_i_first = 0;
-	
+	int my_cows, my_bulls, oponent_cows, oponent_bulls, my_secret_number, other_secret_number, my_geuss, other_client_geuss, flag = 1, am_i_first = 0;
+
 	number_of_connected_clients++; //add current client to the counter
 	set_socket_timeout(SERVER_TIMEOUT, *t_socket);
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
 	printf("Server Recived Massage:\n%s\n", AcceptedStr);
-	if (check_transaction_return_value(RecvRes, t_socket)) 
+	if (check_transaction_return_value(RecvRes, t_socket)) {
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		return 1;
+	}
 	int massage_type = get_massage_type(AcceptedStr);
 	get_str_of_massage_type(massage_type, Massage_type_str);
 	get_client_name(AcceptedStr, Client_Name);
 	check_if_str_is_allocated(&AcceptedStr);
 	if (number_of_connected_clients > 2) { //Server is Full
 		if (!send_massage(SERVER_DENIED_MSG, t_socket)) {
+			printf("error during send massage. exit thread\n");
 			free_service_thread_memories(t_socket, &AcceptedStr);
+			return 1;
 		}
 		printf("Server Send Massage: SERVER_DENIED\n");
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		return 1;
 	}
 	if (!send_massage(SERVER_APPROVED_MSG, t_socket)) {
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		printf("error during send massage. exit thread\n");
+		return 1;
 	}
 	printf("Server Send Massage: SERVER_APPROVED\n");
 server_main_menu:
 	flag = 1;
 	set_socket_timeout(BLOCKING_TIMEOUT, *t_socket);
-	if (!send_massage(SERVER_MAIN_MENU_MSG, t_socket)) {
+	if (!send_massage(SERVER_MAIN_MENU_MSG, t_socket)){
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		printf("error during send massage. exit thread\n");
+		return 1;
 	}
 	printf("Server Send Massage:SERVER_MAIN_MENU\n");
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
-	if (check_transaction_return_value(RecvRes, t_socket)) 
+	if (check_transaction_return_value(RecvRes, t_socket)){
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		printf("error during send massage. exit thread\n");
+		return 1;
+	}
 	printf("Server Recived Massage:\n%s\n", AcceptedStr);
 	massage_type = get_massage_type(AcceptedStr);
-	if (massage_type == CLIENT_DISCONNECT) 
+	if (massage_type == CLIENT_DISCONNECT) {
+		number_of_connected_clients--;
 		free_service_thread_memories(t_socket, &AcceptedStr);
-
+		return 1;
+	}
+	if (!(number_of_connected_clients == 2)) {
+		if (!send_massage(SERVER_NO_OPPONENTS_MSG, t_socket)){
+			free_service_thread_memories(t_socket, &AcceptedStr);
+			printf("error during send massage. exit thread\n");
+			goto server_main_menu;
+		}
+	}
 	/*Client Versus Massage type:*/
 	int writing_return_val = write_client_name_to_game_file(&am_i_first, Client_Name, strlen(Client_Name));
 	if (writing_return_val == SERVER_NO_OPPONENTS) {
-		if (!send_massage(SERVER_NO_OPPONENTS_MSG, t_socket)) 
+		if (!send_massage(SERVER_NO_OPPONENTS_MSG, t_socket)){
 			free_service_thread_memories(t_socket, &AcceptedStr);
-		if (!send_massage(SERVER_MAIN_MENU_MSG, t_socket)) 
+			printf("error during send massage. exit thread\n");
+			return 1;
+		}
+		if (!send_massage(SERVER_MAIN_MENU_MSG, t_socket)){
+			printf("error during send massage. exit thread\n");
 			free_service_thread_memories(t_socket, &AcceptedStr);
+			return 1;
+		}
 		goto server_main_menu;
 	}
 	read_file_get_opponent_user_name(am_i_first, Oponent_Client_Name, strlen(Client_Name));
 	concatenate_str_for_msg(SERVER_INVITE_MSG, Oponent_Client_Name, SendStr);
-	if (!send_massage(SendStr, t_socket))
+	if (!send_massage(SendStr, t_socket)){
+		printf("error during send massage. exit thread\n");
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		return 1;
+	}
 	printf("Server Recived Massage:\n%s\n", AcceptedStr);
-	if (!send_massage(SERVER_SETUP_REQUEST_MSG, t_socket)) 
+	if (!send_massage(SERVER_SETUP_REQUEST_MSG, t_socket)) {
+		printf("error during send massage. exit thread\n");
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		return 1;
+	}
 	check_if_str_is_allocated(&AcceptedStr);
 	printf("Server sending SERVER_SETUP_REQUEST_MSG massage:\n");
 	RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
-	if (check_transaction_return_value(RecvRes, t_socket))
+	if (check_transaction_return_value(RecvRes, t_socket)){
+		printf("error during send massage. exit thread\n");
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		return 1;
+	}
 	printf("Server Recived Massage:\n%s\n", AcceptedStr);
 	my_secret_number = get_4digit_number_from_massage(AcceptedStr);
 	if (am_i_first == 1) 
@@ -441,14 +477,18 @@ server_main_menu:
 	else 
 		second_client_secret_number = my_secret_number;
 	check_if_str_is_allocated(&AcceptedStr);
-	if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) 
+	if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)){
+		printf("error during send massage. exit thread\n");
 		free_service_thread_memories(t_socket, &AcceptedStr);
+		return 1;
+	}
 	while (flag) {
 		printf("Server sending SERVER_PLAYER_MOVE_REQUEST_MSG massage to client %s\n", Client_Name);
 		RecvRes = ReceiveString(&AcceptedStr, *t_socket); //AcceptedStr is dynamic allocated, and should be free
-		if (check_transaction_return_value(RecvRes, t_socket))
+		if (check_transaction_return_value(RecvRes, t_socket)){
 			free_service_thread_memories(t_socket, &AcceptedStr);
-		printf("Server Recived Massage:\n%s\n", AcceptedStr);
+			return 1;
+		}
 		massage_type = get_massage_type(AcceptedStr);
 		get_str_of_massage_type(massage_type, Massage_type_str);
 		my_geuss = get_4digit_number_from_massage(AcceptedStr);
@@ -462,13 +502,18 @@ server_main_menu:
 		format_game_results(my_bulls, my_cows, Oponent_Client_Name, other_client_geuss, temp_buffer);
 		concatenate_str_for_msg(SERVER_GAME_RESULTS_MSG, temp_buffer, SendStr);
 		printf("Server Send massage:\n%s\n", SendStr);
-		if (!send_massage(SendStr, t_socket)) {
+		if (!send_massage(SendStr, t_socket)){
 			free_service_thread_memories(t_socket, &AcceptedStr);
+			printf("error during send massage. exit thread\n");
+			return 1;
 		}
 		check_if_str_is_allocated(&AcceptedStr);
 		if ((my_bulls == 4) && (oponent_bulls == 4)) {
-			if (!send_massage(SERVER_DRAW_MSG, t_socket)) 
+			if (!send_massage(SERVER_DRAW_MSG, t_socket)){
 				free_service_thread_memories(t_socket, &AcceptedStr);
+				printf("error during send massage. exit thread\n");
+				return 1;
+			}
 			flag = 0;
 			goto server_main_menu;
 		}
@@ -477,8 +522,11 @@ server_main_menu:
 			format_win_result(Client_Name, other_secret_number, temp_buffer);
 			concatenate_str_for_msg(SERVER_WIN_MSG, temp_buffer, SendStr);
 			printf("Server Send massage:\n%s\n", SendStr);
-			if (!send_massage(SendStr, t_socket)) 
+			if (!send_massage(SendStr, t_socket)){
+				printf("error during send massage. exit thread\n");
 				free_service_thread_memories(t_socket, &AcceptedStr);
+				return 1;
+			}
 			flag = 0;
 			goto server_main_menu;
 		}
@@ -487,21 +535,26 @@ server_main_menu:
 			concatenate_str_for_msg(SERVER_WIN_MSG, temp_buffer, SendStr);
 			printf("Server Send massage:\n%s\n", SendStr);
 			if (!send_massage(SendStr, t_socket)) {
+				printf("error during send massage. exit thread\n");
 				free_service_thread_memories(t_socket, &AcceptedStr);
+				return 1;
 			}
 			flag = 0;
 			goto server_main_menu;
 		}
 		else {
-			if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)) 
+			if (!send_massage(SERVER_PLAYER_MOVE_REQUEST_MSG, t_socket)){
+				printf("error during send massage. exit thread\n");
 				free_service_thread_memories(t_socket, &AcceptedStr);
+				return 1;
+			}
 		}
 		//TBD:unexpected disconnection of one of the client: send server_opponent_quit and then server_main_menu
 	}
-	gracefull_server_shutdown(AcceptedStr);
+	return 0;
 }
 
-int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
+void calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int my_secret_number,int* other_secret_number,int* oppnent_cows, int* oponent_bulls, int* my_geuss, int* other_client_geuss) {
 	write_lock(game_result_lock);
 	reader_count++;
 	HANDLE Thread_connection_file = CreateFileA(
@@ -512,7 +565,6 @@ int calculate_game_result (int am_i_first, int* my_cows, int* my_bulls,int my_se
 		OPEN_ALWAYS,
 		FILE_ATTRIBUTE_NORMAL, //normal attribute
 		NULL);
-	char other_client_geuss_string[5];
 	int  other_client_secret_number;
 	if (Thread_connection_file == INVALID_HANDLE_VALUE) {
 		printf("ERROR opening the game file calculate_game_result function\n");
@@ -631,7 +683,7 @@ void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name,
 		OPEN_ALWAYS,
 		FILE_ATTRIBUTE_NORMAL, //normal attribute
 		NULL);
-	int first_byte_position, last_byte_position, len;
+	int first_byte_position, last_byte_position;
 	if (Thread_connection_file == INVALID_HANDLE_VALUE) {
 		printf("ERROR opening the game file read_file_get_opponent_user_namee function\n");
 		gracefull_server_shutdown(NULL);
@@ -669,7 +721,6 @@ void read_file_get_opponent_user_name(int am_i_first, char* Oponent_Client_Name,
 		if (wait_for_semaphore == WAIT_TIMEOUT)
 		{
 			printf("Timeout has been reached within write_client_name_to_game_file function for the semaphore\n");
-			return SERVER_NO_OPPONENTS; //TBD: The Caller check it and send this massage to the client! 
 		}
 		else if (wait_for_semaphore == WAIT_OBJECT_0) {
 			printf("First Client free! second thread realese me!\n");
@@ -721,12 +772,14 @@ void game_calculate_and_update_status(int oponent_secret_number, int my_geuss, i
 ///and free all resources- semaphores and locks
 int gracefull_server_shutdown(char* AcceptedStr) {
 	int RecvRes, iResult;
+	set_socket_timeout(SERVER_TIMEOUT, MainSocket);
 	for (int i = 0; i < NUM_OF_WORKER_THREADS; i++) {
 		if (&ThreadInputs[i] != NULL) {
-			RecvRes = ReceiveString(&AcceptedStr, &ThreadInputs[i]);
+			set_socket_timeout(SERVER_TIMEOUT, ThreadInputs[i]);
+			RecvRes = ReceiveString(&AcceptedStr, ThreadInputs[i]);
 			if (check_transaction_return_value(RecvRes, &ThreadInputs[i]))
 				printf("error occourd within gracefull server shutdown.. continue to shutdown\n");
-			shutdown(&ThreadInputs[i], SD_SEND); //signal end of session and that server has no more data to send
+			shutdown(ThreadInputs[i], SD_SEND); //signal end of session and that server has no more data to send
 			iResult = closesocket(ThreadInputs[i]);
 			if (iResult == SOCKET_ERROR)
 				printf("closesocket function failed with error: %ld\n", WSAGetLastError());
